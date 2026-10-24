@@ -943,6 +943,19 @@ class GameApp {
 
     // Render
     this.renderer.render(this.scene, this.camera);
+
+    // Auto-dismiss loading screen once scene is active
+    if (!this.hasDismissedLoading) {
+      this.hasDismissedLoading = true;
+      const ls = document.getElementById('loading-screen');
+      if (ls) {
+        setTimeout(() => {
+          ls.style.opacity = '0';
+          setTimeout(() => { ls.style.display = 'none'; }, 600);
+        }, 300);
+      }
+    }
+
   }
 }
 

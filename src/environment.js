@@ -2029,66 +2029,108 @@ export class EnvironmentManager {
   }
 
   async initStarbase() {
+    // 1. IMMEDIATELY add Starbase lighting so the station is NEVER in pitch blackness!
+    const stationHemi = new THREE.HemisphereLight(0xbae6fd, 0x1e293b, 3.5);
+    this.starbaseGroup.add(stationHemi);
+
+    const stationAmb = new THREE.AmbientLight(0xffffff, 2.6);
+    this.starbaseGroup.add(stationAmb);
+
+    const stationSun = new THREE.DirectionalLight(0xe0f2fe, 2.8);
+    stationSun.position.set(10, 18, 8);
+    this.starbaseGroup.add(stationSun);
+
+    // Concourse Floodlights (Bright, high-visibility illumination across the station)
+    const concourseLights = [
+      { z: -25, color: 0x00d4ff, y: 5.5, intensity: 5.5, dist: 50 },
+      { z: 0,   color: 0x00f0ff, y: 5.8, intensity: 6.0, dist: 55 },
+      { z: +22, color: 0x38bdf8, y: 5.5, intensity: 5.5, dist: 50 },
+      { z: +34, color: 0x00ffaa, y: 5.5, intensity: 6.0, dist: 45 }
+    ];
+    concourseLights.forEach((lp) => {
+      const pl = new THREE.PointLight(lp.color, lp.intensity, lp.dist);
+      pl.position.set(0, lp.y, lp.z);
+      this.starbaseGroup.add(pl);
+    });
+
+    // 2. IMMEDIATELY add Procedural Starbase Concourse Platform
+    // (Guarantees visible floor, observation deck, and departure gate from frame 1!)
+    const concourseGroup = new THREE.Group();
+    const floorGeo = new THREE.BoxGeometry(40, 0.4, 80);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      roughness: 0.35,
+      metalness: 0.65
+    });
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+    floorMesh.position.set(0, -0.2, 4);
+    concourseGroup.add(floorMesh);
+
+    // Glowing concourse runway guide stripes
+    const stripeGeo = new THREE.PlaneGeometry(0.35, 78);
+    const stripeMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, side: THREE.DoubleSide });
+    const stripeL = new THREE.Mesh(stripeGeo, stripeMat);
+    stripeL.rotation.x = -Math.PI / 2;
+    stripeL.position.set(-6.5, 0.02, 4);
+    const stripeR = new THREE.Mesh(stripeGeo, stripeMat);
+    stripeR.rotation.x = -Math.PI / 2;
+    stripeR.position.set(6.5, 0.02, 4);
+    concourseGroup.add(stripeL, stripeR);
+
+    // Station Perimeter Safety Rails & Glow Panels
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.3 });
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+    [-19.5, 19.5].forEach(x => {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.2, 80), railMat);
+      rail.position.set(x, 0.6, 4);
+      const glowBar = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 80), glowMat);
+      glowBar.position.set(x, 1.22, 4);
+      concourseGroup.add(rail, glowBar);
+    });
+
+    this.starbaseFallbackPlatform = concourseGroup;
+    this.starbaseGroup.add(concourseGroup);
+
+    // Departure Airlock Gate to Starship
+    this.setupStarbaseDepartureGate();
+
+    // 3. Asynchronously load high-detail Starbase model (if available)
     const gltfLoader = new GLTFLoader();
     try {
       console.log("Loading Starbase station model...");
       const gltf = await gltfLoader.loadAsync('/assets/starbase.glb');
-      this.starbaseModel = gltf.scene;
-      // Floor aligned at Y = 0.0, Station bounds X: [-22, 22], Z: [-39, 47]
-      this.starbaseModel.position.set(0, 0.26, 0);
-      this.starbaseModel.traverse((child) => {
-        if (child.isMesh) {
-          child.receiveShadow = false;
-          child.castShadow = false;
-          const mats = Array.isArray(child.material) ? child.material : [child.material];
-          mats.forEach((mat) => {
-            if (!mat) return;
-            // Elevate terminal screens, indicators, displays
-            if (mat.emissive && (mat.emissive.r > 0.05 || mat.emissive.g > 0.05 || mat.emissive.b > 0.05)) {
-              mat.emissiveIntensity = 2.5;
-            } else {
-              mat.roughness = Math.min(mat.roughness !== undefined ? mat.roughness : 0.38, 0.5);
-              mat.metalness = Math.max(mat.metalness !== undefined ? mat.metalness : 0.4, 0.6);
-            }
-          });
-        }
-      });
-      this.starbaseGroup.add(this.starbaseModel);
-      console.log("Starbase station loaded successfully!");
-
-      // Station Interior Lighting & Atmosphere (Crisp, high-luminance sci-fi station)
-      const stationHemi = new THREE.HemisphereLight(0xbae6fd, 0x1e293b, 3.5);
-      this.starbaseGroup.add(stationHemi);
-
-      const stationAmb = new THREE.AmbientLight(0xffffff, 2.6);
-      this.starbaseGroup.add(stationAmb);
-
-      const stationSun = new THREE.DirectionalLight(0xe0f2fe, 2.5);
-      stationSun.position.set(10, 15, 8);
-      this.starbaseGroup.add(stationSun);
-
-      // Station Concourse High-Bay Floodlight Network (Wide coverage, high framerate)
-      const concourseLights = [
-        { z: -25, color: 0x00d4ff, y: 5.2, intensity: 5.5, dist: 45 }, // Aft Concourse & Engineering
-        { z: 0,   color: 0x00f0ff, y: 5.5, intensity: 6.0, dist: 50 }, // Central Concourse & Plaza
-        { z: +22, color: 0x38bdf8, y: 5.2, intensity: 5.5, dist: 45 }, // Departure Staging
-        { z: +34, color: 0x00ffaa, y: 5.2, intensity: 6.0, dist: 40 }  // Starship Departure Airlock Gate
-      ];
-
-      concourseLights.forEach((lp) => {
-        const pl = new THREE.PointLight(lp.color, lp.intensity, lp.dist);
-        pl.position.set(0, lp.y, lp.z);
-        this.starbaseGroup.add(pl);
-      });
-
-      // Starship Docking Airlock Gate at Z = 32.0 (Departure gate to Starship)
-      this.setupStarbaseDepartureGate();
+      if (gltf && gltf.scene) {
+        this.starbaseModel = gltf.scene;
+        this.starbaseModel.position.set(0, 0.26, 0);
+        this.starbaseModel.traverse((child) => {
+          if (child.isMesh) {
+            child.receiveShadow = false;
+            child.castShadow = false;
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            mats.forEach((mat) => {
+              if (!mat) return;
+              if (mat.emissive && (mat.emissive.r > 0.05 || mat.emissive.g > 0.05 || mat.emissive.b > 0.05)) {
+                mat.emissiveIntensity = 2.5;
+              } else {
+                mat.roughness = Math.min(mat.roughness !== undefined ? mat.roughness : 0.38, 0.5);
+                mat.metalness = Math.max(mat.metalness !== undefined ? mat.metalness : 0.4, 0.6);
+              }
+            });
+          }
+        });
+        this.starbaseGroup.add(this.starbaseModel);
+        console.log("Starbase station loaded successfully!");
+      }
     } catch (e) {
-      console.warn("Could not load starbase.glb:", e);
+      console.warn("Could not load starbase.glb, using procedural station concourse:", e);
     }
 
     // Also place Orbital Starbase in space sector so it can be seen and visited in flight
-    this.setupOrbitalStarbase();
+    try {
+      this.setupOrbitalStarbase();
+    } catch (e) {
+      console.warn("Could not setup orbital starbase:", e);
+    }
   }
 
   setupStarbaseDepartureGate() {

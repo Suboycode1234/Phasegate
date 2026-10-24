@@ -196,6 +196,7 @@ export class PlayerController {
     this.unlockedWeapons = new Set(['unarmed']);
     this.rightHandBone = null;
     this.leftHandBone = null;
+    this.createFallbackMesh(); // Instant fallback so character is visible on frame 1
     this.grappleGroup = new THREE.Group();
     this.scene.add(this.grappleGroup);
 

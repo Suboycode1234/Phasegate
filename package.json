@@ -1,0 +1,19 @@
+{
+  "name": "space3d-game",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host --port 8888",
+    "build": "vite build",
+    "build:standalone": "vite build && node scripts/build-standalone.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "peerjs": "^1.5.5",
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.10"
+  }
+}

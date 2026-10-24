@@ -1,0 +1,586 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap');
+
+:root {
+  --primary: #00e5ff;
+  --primary-glow: rgba(0, 229, 255, 0.45);
+  --primary-dark: #006680;
+  --accent: #ff9100;
+  --accent-glow: rgba(255, 145, 0, 0.45);
+  --danger: #ff2255;
+  --danger-glow: rgba(255, 34, 85, 0.5);
+  --success: #00ff88;
+  --bg-hud: rgba(6, 12, 22, 0.72);
+  --bg-border: rgba(0, 229, 255, 0.25);
+  --text-main: #e0f2fe;
+  --text-dim: #7dd3fc;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #020408;
+  color: var(--text-main);
+  font-family: 'Rajdhani', sans-serif;
+}
+
+#canvas-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Subtle Sci-Fi Scanlines & CRT Vignette */
+.screen-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+  background: 
+    radial-gradient(circle at center, transparent 65%, rgba(0, 0, 0, 0.75) 100%),
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+  background-size: 100% 100%, 100% 3px;
+}
+
+/* UI Root */
+#hud-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 24px 32px;
+}
+
+/* Header Bar */
+.hud-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.system-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.system-logo {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: #fff;
+  text-shadow: 0 0 16px var(--primary-glow);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.system-logo span {
+  color: var(--primary);
+}
+
+.mode-badge {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  box-shadow: 0 0 12px var(--primary-glow);
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+}
+
+.mode-badge.combat {
+  background: rgba(255, 145, 0, 0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+.header-status {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.status-pill {
+  font-size: 13px;
+  letter-spacing: 1px;
+  background: var(--bg-hud);
+  border: 1px solid var(--bg-border);
+  padding: 6px 16px;
+  border-radius: 4px;
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.btn-primary-mode {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(0, 102, 128, 0.45));
+  border: 1px solid var(--primary);
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 16px var(--primary-glow);
+  transition: all 0.25s ease;
+  pointer-events: auto;
+}
+
+.btn-primary-mode:hover {
+  background: var(--primary);
+  color: #000;
+  box-shadow: 0 0 24px var(--primary-glow);
+  transform: translateY(-1px);
+}
+
+.btn-primary-mode.flight-mode {
+  background: linear-gradient(135deg, rgba(255, 145, 0, 0.25), rgba(128, 70, 0, 0.45));
+  border-color: var(--accent);
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+.btn-primary-mode.flight-mode:hover {
+  background: var(--accent);
+  color: #000;
+  box-shadow: 0 0 24px var(--accent-glow);
+}
+
+.btn-icon {
+  background: var(--bg-hud);
+  border: 1px solid var(--bg-border);
+  color: var(--text-main);
+  padding: 8px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+  background: rgba(0, 229, 255, 0.2);
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 0 14px var(--primary-glow);
+}
+
+/* Center Crosshair & Interaction Prompts */
+.hud-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.reticle-container {
+  width: 44px;
+  height: 44px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reticle-dot {
+  width: 4px;
+  height: 4px;
+  background: var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--primary);
+}
+
+.reticle-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 50%;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  transition: all 0.2s ease;
+}
+
+.reticle-bracket-l, .reticle-bracket-r {
+  position: absolute;
+  width: 6px;
+  height: 14px;
+  border: 1.5px solid var(--primary);
+}
+
+.reticle-bracket-l {
+  left: 0;
+  border-right: none;
+}
+
+.reticle-bracket-r {
+  right: 0;
+  border-left: none;
+}
+
+/* Prompt Banner */
+.interact-prompt {
+  background: rgba(6, 16, 28, 0.85);
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 20px var(--accent-glow);
+  padding: 10px 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #fff;
+  backdrop-filter: blur(10px);
+  animation: promptPulse 1.5s infinite alternate;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.25s ease;
+  pointer-events: none;
+}
+
+.interact-prompt.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.key-cap {
+  background: var(--accent);
+  color: #000;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: 900;
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+@keyframes promptPulse {
+  from { box-shadow: 0 0 12px var(--accent-glow); }
+  to { box-shadow: 0 0 26px var(--accent-glow); }
+}
+
+/* Bottom HUD: Telemetry Gauges */
+.hud-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.gauges-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 290px;
+  background: var(--bg-hud);
+  border: 1px solid var(--bg-border);
+  padding: 16px 20px;
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.gauge-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.gauge-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.gauge-track {
+  width: 100%;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.gauge-fill {
+  height: 100%;
+  width: 100%;
+  transition: width 0.2s ease-out;
+  border-radius: 2px;
+}
+
+.gauge-shield .gauge-fill {
+  background: linear-gradient(90deg, #0088cc, var(--primary));
+  box-shadow: 0 0 10px var(--primary-glow);
+}
+
+.gauge-hull .gauge-fill {
+  background: linear-gradient(90deg, #ff4400, #00ff88);
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
+}
+
+.gauge-boost .gauge-fill {
+  background: linear-gradient(90deg, #cc7700, var(--accent));
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+/* Controls Guide Mini Card */
+.controls-card {
+  background: var(--bg-hud);
+  border: 1px solid var(--bg-border);
+  padding: 14px 20px;
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.controls-card .title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+
+.control-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.control-key {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 2px 7px;
+  border-radius: 3px;
+  color: #fff;
+}
+
+/* Seated Pilot Flight Controls Card Active State */
+.controls-card.pilot-active {
+  background: rgba(8, 16, 32, 0.94);
+  border: 1px solid rgba(0, 240, 255, 0.75);
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.35), inset 0 0 18px rgba(0, 240, 255, 0.12);
+  min-width: 290px;
+  animation: pulse-pilot-border 3s infinite alternate;
+}
+
+@keyframes pulse-pilot-border {
+  from { border-color: rgba(0, 240, 255, 0.5); }
+  to { border-color: rgba(0, 240, 255, 0.95); }
+}
+
+/* Modal Windows (Multiplayer Room Dialog, Help) */
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(2, 6, 12, 0.85);
+  backdrop-filter: blur(12px);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-card {
+  background: rgba(10, 18, 30, 0.95);
+  border: 1px solid var(--primary);
+  box-shadow: 0 0 35px var(--primary-glow);
+  width: 440px;
+  padding: 32px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.modal-header {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  border-bottom: 1px solid var(--bg-border);
+  padding-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 15px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.text-input {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--bg-border);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 4px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.text-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 10px var(--primary-glow);
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #000;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 4px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 16px var(--primary-glow);
+}
+
+.btn-primary:hover {
+  background: #33ecff;
+  box-shadow: 0 0 24px var(--primary-glow);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-main);
+  border: 1px solid var(--bg-border);
+  padding: 10px 18px;
+  border-radius: 4px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  border-color: var(--primary);
+  background: rgba(0, 229, 255, 0.1);
+}
+
+/* Character Select Screen Styles */
+.char-card {
+  transition: transform 0.2s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.char-card:hover {
+  transform: translateY(-3px);
+  border-color: #38bdf8 !important;
+}
+
+.char-card.active {
+  border-color: #00f0ff !important;
+  box-shadow: 0 0 25px rgba(0, 240, 255, 0.4) !important;
+}
+
+
+#damage-flash {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 6;
+  background: radial-gradient(circle at center, transparent 30%, rgba(239, 68, 68, 0.45) 75%, rgba(220, 38, 38, 0.85) 100%);
+  opacity: 0;
+  transition: opacity 0.08s ease-out;
+}

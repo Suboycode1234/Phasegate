@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Space 3D: Odyssey - Tactical Starship & Interior Combat</title>
+  <meta name="description" content="Immersive 3D Space & Tactical Combat Simulator with detailed ship interiors, 3rd-person animations, 6-DOF spaceflight, and multiplayer foundation." />
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <!-- WebGL Render Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- Scanlines & Cinematic Vignette -->
+  <div class="screen-overlay"></div>
+  <div id="damage-flash"></div>
+
+  <!-- Interactive Sci-Fi HUD Overlay -->
+  <div id="hud-overlay">
+    <!-- Top Header Bar -->
+    <header class="hud-header">
+      <div class="system-title">
+        <div class="system-logo">SPACE<span>3D</span></div>
+        <div id="mode-badge" class="mode-badge">INTERIOR RECON</div>
+      </div>
+
+      <div class="header-status">
+        <div class="status-pill" id="ability-pill" style="border-color: rgba(0, 240, 255, 0.4); background: rgba(8, 20, 36, 0.7); cursor: pointer;" title="Press [Q] to activate class special ability"><span style="color: #38bdf8; font-weight: bold; font-size: 11px;">[Q] ABILITY:</span><span id="ability-val" style="color: #00f0ff; font-weight: 700; margin-left: 4px;">READY</span></div>
+        <div class="status-pill" id="weapon-pill" style="border-color: rgba(0, 240, 255, 0.4); background: rgba(8, 20, 36, 0.7);">
+          <span style="color: #38bdf8; font-weight: bold; font-size: 11px;">WEAPON:</span>
+          <span id="weapon-val" style="color: #38bdf8; font-weight: 700; margin-left: 4px;">UNARMED [FISTS]</span>
+        </div>
+        <button id="btn-toggle-mode" class="btn-primary-mode">🚀 PILOT SHIP</button>
+        <button id="btn-character-select" class="btn-icon" style="border-color: #38bdf8; color: #38bdf8;">👤 PILOT SELECT</button>
+        <div class="status-pill">
+          <div class="status-indicator"></div>
+          <span id="mp-status">SOLO / READY</span>
+        </div>
+        <button id="btn-multiplayer" class="btn-icon">MULTIPLAYER</button>
+        <button id="btn-audio" class="btn-icon">AUDIO: ON</button>
+      </div>
+    </header>
+
+    <!-- Center Reticle & Dynamic Context Prompts -->
+    <div class="hud-center">
+      <div class="reticle-container">
+        <div class="reticle-bracket-l"></div>
+        <div class="reticle-dot"></div>
+        <div class="reticle-bracket-r"></div>
+        <div class="reticle-ring"></div>
+      </div>
+
+      <!-- Action prompt (e.g. [E] Pilot Ship) -->
+      <div id="interact-prompt" class="interact-prompt">
+        <span class="key-cap">E</span>
+        <span id="prompt-text">PILOT STARSHIP</span>
+      </div>
+    </div>
+
+    <!-- Bottom Telemetry & Controls Footer -->
+    <footer class="hud-footer">
+      <!-- Shield, Hull & Boost Gauges -->
+      <div class="gauges-panel">
+        <div class="gauge-row gauge-shield">
+          <div class="gauge-label">
+            <span>SHIELDS</span>
+            <span id="shield-val">100%</span>
+          </div>
+          <div class="gauge-track">
+            <div id="shield-fill" class="gauge-fill" style="width: 100%;"></div>
+          </div>
+        </div>
+
+        <div class="gauge-row gauge-hull">
+          <div class="gauge-label">
+            <span>HULL INTEGRITY</span>
+            <span id="hull-val">100%</span>
+          </div>
+          <div class="gauge-track">
+            <div id="hull-fill" class="gauge-fill" style="width: 100%;"></div>
+          </div>
+        </div>
+
+        <div class="gauge-row gauge-boost">
+          <div class="gauge-label">
+            <span id="boost-label">BOOST ENERGY</span>
+            <span id="boost-val">100%</span>
+          </div>
+          <div class="gauge-track">
+            <div id="boost-fill" class="gauge-fill" style="width: 100%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dynamic Controls Cheatsheet -->
+      <div id="controls-card" class="controls-card">
+        <div class="title" id="controls-title">CONTROLS [INTERIOR]</div>
+        <div class="control-item">
+          <span>Move</span>
+          <span class="control-key">W A S D</span>
+        </div>
+        <div class="control-item">
+          <span>Sprint</span>
+          <span class="control-key">SHIFT</span>
+        </div>
+        <div class="control-item">
+          <span>Jump (Combined)</span>
+          <span class="control-key">SPACE</span>
+        </div>
+        <div class="control-item">
+          <span>Crouch</span>
+          <span class="control-key">C</span>
+        </div>
+        <div class="control-item">
+          <span id="ctrl-action-name">Melee Strike</span>
+          <span class="control-key">LMB</span>
+ </div>
+ <div class="control-item">
+ <span>Airlock Tether</span>
+ <span class="control-key">F</span>
+        </div>
+        <div class="control-item">
+          <span>Climb Ladder</span>
+          <span class="control-key">W / S</span>
+        </div>
+        <div class="control-item"><span id="ctrl-ability-name">Class Special Ability</span><span class="control-key">Q</span></div>
+        <div class="control-item"><span id="ctrl-grapple-name">Dual Grapplers (Scout)</span><span class="control-key">6 / G / LMB</span></div>
+        <div class="control-item">
+          <span>Switch Weapon</span>
+          <span class="control-key">1 - 6</span>
+        </div>
+        <div class="control-item">
+          <span>Reload Ammo</span>
+          <span class="control-key">R</span>
+        </div>
+        <div class="control-item">
+          <span id="ctrl-interact-name">Cockpit Flight</span>
+          <span class="control-key">E</span>
+        </div>
+        <div class="control-item">
+          <span>Toggle 1st/3rd View</span>
+          <span class="control-key">V</span>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Multiplayer Room Modal Dialog -->
+  <div id="modal-multiplayer" class="modal-overlay">
+    <div class="modal-card" style="width: 500px; max-width: 95vw;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: #00f0ff;">MULTIPLAYER SQUAD LINK</span>
+          <span style="font-size: 10px; background: rgba(0, 240, 255, 0.2); border: 1px solid #00f0ff; padding: 2px 6px; border-radius: 4px; color: #38bdf8;">WEBRTC P2P</span>
+        </div>
+        <button id="btn-close-modal" class="btn-icon">X</button>
+      </div>
+      <div class="modal-body">
+        <p style="color: #94a3b8; font-size: 13px; line-height: 1.5; margin-bottom: 12px;">
+          Serverless WebRTC P2P mesh over the global internet. Direct browser-to-browser connection with STUN & TURN NAT traversal. Enter a squad room code or share your instant invite link.
+        </p>
+        <div class="input-group" style="margin-bottom: 12px;">
+          <label class="input-label" for="room-input">Squad Room Code</label>
+          <input type="text" id="room-input" class="text-input" value="Alpha-1" placeholder="Enter room code (e.g. Alpha-1)..." />
+        </div>
+        <div style="display: flex; gap: 10px; margin-bottom: 14px;">
+          <button id="btn-join-room" class="btn-primary" style="flex: 1; padding: 10px 0; font-size: 12px;">CONNECT TO SQUAD</button>
+          <button id="btn-copy-invite" class="btn-secondary" style="flex: 1; padding: 10px 0; font-size: 12px; border-color: #38bdf8; color: #38bdf8;">📋 COPY INVITE LINK</button>
+        </div>
+        <div style="font-size: 11px; color: #64748b; line-height: 1.45; background: rgba(0,0,0,0.35); border-radius: 4px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.06);">
+          <div style="color: #38bdf8; font-weight: 700; margin-bottom: 4px;">INTERNET SQUAD ARCHITECTURE:</div>
+          <div>• Works over public Internet, Wi-Fi, and 4G/5G mobile tethering</div>
+          <div>• STUN & encrypted TURN relays handle firewalls & strict NATs</div>
+          <div>• Click <b>COPY INVITE LINK</b> and send it to friends for 1-click joining</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Character Select Screen Modal -->
+  <div id="modal-character-select" class="modal-overlay">
+    <div class="modal-card character-select-card" style="width: 1040px; max-width: 96vw;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="color: #00f0ff;">STARFLEET PILOT ROSTER</span>
+          <span style="font-size: 11px; background: rgba(0, 240, 255, 0.2); border: 1px solid #00f0ff; padding: 2px 8px; border-radius: 4px; color: #38bdf8;">3 TACTICAL CLASSES</span>
+        </div>
+        <button id="btn-close-char-modal" class="btn-icon">X</button>
+      </div>
+      <div class="modal-body">
+        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 12px;">
+          Select your operative class. Each pilot has specialized native skeletal rigs, PBR armor shaders, and class abilities.
+        </p>
+
+        <div class="character-cards-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+          <!-- Pilot 1: Captain -->
+          <div id="card-pilot1" class="char-card active" style="background: rgba(15, 23, 42, 0.95); border: 2px solid #00f0ff; border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.25s ease; box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-family: Orbitron, sans-serif; font-weight: bold; color: #fff; font-size: 15px;">PILOT 01: CAPTAIN</span>
+              <span id="badge-pilot1" style="font-size: 10px; background: #00f0ff; color: #000; font-weight: 800; padding: 2px 6px; border-radius: 3px;">DEPLOYED</span>
+            </div>
+            <div style="font-size: 11px; color: #38bdf8; font-weight: 700; margin-bottom: 6px;">FLEET COMMANDER VANGUARD</div>
+            <p style="color: #cbd5e1; font-size: 12px; line-height: 1.4; margin-bottom: 10px;">
+              Command veteran in heavy ballistic exo-armor. Press [Q] for Tactical Rally: +50% instant shield boost and squad sprint overdrive.
+            </p>
+            <div style="background: rgba(0,0,0,0.4); border-radius: 4px; padding: 8px 10px; font-family: monospace; font-size: 10px; color: #94a3b8; margin-bottom: 12px;">
+              <div>CLASS: CAPTAIN // ARMOR: 100%</div>
+              <div>ABILITY: TACTICAL RALLY [Q]</div>
+              <div>BUFF: +50 SHIELD & SPRINT OVERDRIVE</div>
+            </div>
+            <button id="btn-select-pilot1" class="btn-primary" style="width: 100%; font-size: 11px; padding: 7px 0;">SELECT CAPTAIN</button>
+          </div>
+
+          <!-- Pilot 2: Mechanic -->
+          <div id="card-pilot2" class="char-card" style="background: rgba(15, 23, 42, 0.95); border: 2px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.25s ease;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-family: Orbitron, sans-serif; font-weight: bold; color: #fff; font-size: 15px;">PILOT 02: MECHANIC</span>
+              <span id="badge-pilot2" style="font-size: 10px; background: rgba(255,255,255,0.15); color: #94a3b8; font-weight: 800; padding: 2px 6px; border-radius: 3px;">RESERVE</span>
+            </div>
+            <div style="font-size: 11px; color: #f59e0b; font-weight: 700; margin-bottom: 6px;">CHIEF ENGINEER COG</div>
+            <p style="color: #cbd5e1; font-size: 12px; line-height: 1.4; margin-bottom: 10px;">
+              Ship engineer & weapons technician with full PBR textures. Press [Q] for Nanite Repair: +40% hull repair and full ammo magazine restock.
+            </p>
+            <div style="background: rgba(0,0,0,0.4); border-radius: 4px; padding: 8px 10px; font-family: monospace; font-size: 10px; color: #94a3b8; margin-bottom: 12px;">
+              <div>CLASS: MECHANIC // HULL: 110%</div>
+              <div>ABILITY: NANITE REPAIR [Q]</div>
+              <div>BUFF: +40 HULL & FULL AMMO</div>
+            </div>
+            <button id="btn-select-pilot2" class="btn-secondary" style="width: 100%; font-size: 11px; padding: 7px 0;">SELECT MECHANIC</button>
+          </div>
+
+          <!-- Pilot 3: Scout -->
+          <div id="card-pilot3" class="char-card" style="background: rgba(15, 23, 42, 0.95); border: 2px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.25s ease;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-family: Orbitron, sans-serif; font-weight: bold; color: #fff; font-size: 15px;">PILOT 03: SCOUT</span>
+              <span id="badge-pilot3" style="font-size: 10px; background: rgba(255,255,255,0.15); color: #94a3b8; font-weight: 800; padding: 2px 6px; border-radius: 3px;">RESERVE</span>
+            </div>
+            <div style="font-size: 11px; color: #10b981; font-weight: 700; margin-bottom: 6px;">SPECTRE RECON PATHFINDER</div>
+            <p style="color: #cbd5e1; font-size: 12px; line-height: 1.4; margin-bottom: 10px;">
+              Ultra-light recon operative equipped with inbuilt Dual Kinetic Wrist Grapplers [6/G/LMB] to latch, swing, and slingshot across space at extreme speeds.
+            </p>
+            <div style="background: rgba(0,0,0,0.4); border-radius: 4px; padding: 8px 10px; font-family: monospace; font-size: 10px; color: #94a3b8; margin-bottom: 12px;">
+              <div>CLASS: SCOUT // AGILITY: +25%</div>
+              <div>INBUILT WEAPON: DUAL GRAPPLERS</div>
+              <div>MOBILITY: KINETIC SLINGSHOT</div>
+            </div>
+            <button id="btn-select-pilot3" class="btn-secondary" style="width: 100%; font-size: 11px; padding: 7px 0;">SELECT SCOUT</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Entry Point -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

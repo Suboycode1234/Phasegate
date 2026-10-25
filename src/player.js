@@ -166,7 +166,7 @@ export class PlayerController {
     this.gravity = 18.0;
 
     // Camera parameters & View Mode (True First Person with visible body/arms by default)
-    this.viewMode = 'firstPerson';
+    this.viewMode = 'thirdPerson';
     this.cameraYaw = 0;
     this.cameraPitch = 0.0;
     this.cameraDistance = 2.8;
@@ -1206,22 +1206,26 @@ export class PlayerController {
       // ==========================================
       // SPACEWALK / ZERO-G EVA JETPACK & HULL TETHER
       // ==========================================
+            // =========================================================================
+      // JUMP SPACE STYLE 360-DEGREE ZERO-G FLOATING & RCS MOMENTUM SYSTEM
+      // Authentic space vacuum physics with genuine weightlessness & inertia
+      // =========================================================================
       this.isSpacewalk = true;
 
-      // Mag-Boots toggle via [KeyB]
+      // Mag-Boots toggle via [KeyB] (Only active within 7m of ship hull surface)
+      const distToHull = this.position.distanceTo(this.tetherAnchor);
       const magBootsPressed = this.input.isDown('KeyB');
       if (magBootsPressed && !this.prevMagBootsKey) {
-        const distToHull = Math.abs(this.position.y - (this.tetherAnchor.y + 4.2));
         if (this.isTethered) {
-          // Disengage Mag-Boots -> Activate Jetpack
+          // Disengage Mag-Boots -> Launch back into free Zero-G floating
           this.isTethered = false;
           this.jetpackActive = true;
+          this.velocity.y += 2.5;
           sounds.playJetpack(true);
-        } else if (distToHull < 8.0) {
-          // Re-engage Mag-Boots onto hull
+        } else if (distToHull < 10.0) {
+          // Magnetically clamp boots onto starship hull plates
           this.isTethered = true;
           this.jetpackActive = false;
-          this.position.y = this.tetherAnchor.y + 4.2;
           this.velocity.set(0, 0, 0);
           sounds.playMagBoot();
         }
@@ -1229,12 +1233,8 @@ export class PlayerController {
       this.prevMagBootsKey = magBootsPressed;
 
       if (this.isTethered) {
-        // --- TETHERED MODE: WALKING ON SHIP HULL WITH MAG-BOOTS ---
-        const hullY = this.tetherAnchor.y + 4.2;
-        this.position.y = hullY;
-        this.velocity.y = 0;
+        // --- MAG-BOOTS CLAMPED MODE: WALKING ON SHIP HULL ---
         this.isGrounded = true;
-
         if (isMoving) {
           this.velocity.x = moveDir.x * targetSpeed;
           this.velocity.z = moveDir.z * targetSpeed;
@@ -1248,76 +1248,105 @@ export class PlayerController {
           this.velocity.z = 0;
         }
 
-        // Jump disengages Mag-Boots into Jetpack Flight
+        // Jump disengages Mag-Boots into Zero-G floating launch
         if (this.input.isDown('Space')) {
           this.isTethered = false;
           this.jetpackActive = true;
-          this.velocity.y = 4.5;
+          this.velocity.y += 5.0;
           sounds.playJetpack(true);
         }
       } else {
-        // --- JETPACK FLIGHT MODE: 3D 6DOF ZERO-G THRUSTERS ---
+        // --- AUTHENTIC ZERO-G FLOATING IN VACUUM (JUMP SPACE MECHANICS) ---
         this.isGrounded = false;
+        this.jetpackActive = true;
+
+        // Full 360° spherical camera coordinate vectors
         const camDir = new THREE.Vector3();
         this.camera.getWorldDirection(camDir);
-        const camRight = new THREE.Vector3().crossVectors(camDir, new THREE.Vector3(0, 1, 0)).normalize();
+        const camRight = new THREE.Vector3().crossVectors(camDir, this.camera.up).normalize();
+        const camUp = this.camera.up.clone().normalize();
 
-        const thrustAccel = this.isSprinting ? 30.0 : 16.0;
+        const thrustPower = this.isSprinting ? 28.0 : 14.0;
         let isThrusting = false;
+        const thrustVec = new THREE.Vector3();
 
+        // 3D Omnidirectional RCS Thrusters
         if (this.input.isDown('KeyW') || this.input.isDown('ArrowUp')) {
-          this.velocity.addScaledVector(camDir, thrustAccel * delta);
+          thrustVec.addScaledVector(camDir, 1.0);
           isThrusting = true;
         }
         if (this.input.isDown('KeyS') || this.input.isDown('ArrowDown')) {
-          this.velocity.addScaledVector(camDir, -thrustAccel * delta);
+          thrustVec.addScaledVector(camDir, -0.85);
           isThrusting = true;
         }
         if (this.input.isDown('KeyA') || this.input.isDown('ArrowLeft')) {
-          this.velocity.addScaledVector(camRight, -thrustAccel * delta);
+          thrustVec.addScaledVector(camRight, -0.9);
           isThrusting = true;
         }
         if (this.input.isDown('KeyD') || this.input.isDown('ArrowRight')) {
-          this.velocity.addScaledVector(camRight, thrustAccel * delta);
+          thrustVec.addScaledVector(camRight, 0.9);
           isThrusting = true;
         }
         if (this.input.isDown('Space')) {
-          this.velocity.y += thrustAccel * delta;
+          thrustVec.addScaledVector(camUp, 1.0);
           isThrusting = true;
         }
         if (this.input.isDown('KeyC') || this.input.isDown('ControlLeft')) {
-          this.velocity.y -= thrustAccel * delta;
+          thrustVec.addScaledVector(camUp, -1.0);
           isThrusting = true;
         }
 
-        // Space drag / RCS stabilizer damping
-        this.velocity.multiplyScalar(0.985);
-
-        // Sound & Fuel
         if (isThrusting) {
+          thrustVec.normalize();
+          this.velocity.addScaledVector(thrustVec, thrustPower * delta);
+
           this.thrusterParticleTimer += delta;
-          if (this.thrusterParticleTimer >= 0.18) {
+          if (this.thrusterParticleTimer >= 0.16) {
             sounds.playJetpack(this.isSprinting);
             this.thrusterParticleTimer = 0;
           }
-          this.jetpackFuel = Math.max(0, this.jetpackFuel - delta * (this.isSprinting ? 8.0 : 3.5));
+          this.jetpackFuel = Math.max(0, this.jetpackFuel - delta * (this.isSprinting ? 9.0 : 4.0));
         } else {
           this.jetpackFuel = Math.min(this.jetpackMaxFuel, this.jetpackFuel + delta * 6.0);
+        }
+
+        // SILKY SMOOTH VACUUM INERTIA & MOMENTUM DRIFT
+        // In deep space, there is almost zero friction. Player drifts gracefully with momentum!
+        const vacuumDamping = Math.pow(0.978, delta * 60);
+        this.velocity.multiplyScalar(vacuumDamping);
+
+        // Max velocity clamp (prevents clipping through asteroids at extreme speed)
+        const maxEvaSpeed = this.isSprinting ? 36.0 : 18.0;
+        if (this.velocity.length() > maxEvaSpeed) {
+          this.velocity.setLength(maxEvaSpeed);
+        }
+
+        // Apply 3D floating position integration
+        this.position.addScaledVector(this.velocity, delta);
+
+        // Smooth 3D Zero-G Avatar Attitude & Bank Alignment
+        if (this.mesh) {
+          // Orient character smoothly towards look direction with realistic zero-G limb drift
+          this.mesh.rotation.y = this.cameraYaw;
+          const tiltPitch = -this.cameraPitch * 0.75;
+          const bankRoll = -this.velocity.dot(camRight) * 0.035;
+          this.mesh.rotation.x = THREE.MathUtils.lerp(this.mesh.rotation.x, tiltPitch, delta * 6.0);
+          this.mesh.rotation.z = THREE.MathUtils.lerp(this.mesh.rotation.z, bankRoll, delta * 6.0);
         }
       }
 
       // Check proximity to exterior airlock hatch on Mothership
       const distToAirlock = this.position.distanceTo(this.tetherAnchor);
-      this.nearExteriorAirlock = (distToAirlock < 7.0);
+      this.nearExteriorAirlock = (distToAirlock < 8.0);
       if (this.nearExteriorAirlock && this.input.isDown('KeyE')) {
         if (this.onInteract) this.onInteract('enter_interior');
       }
 
-      // Tether range limiter (elastic pull at > 260m)
+      // Tether range limiter (elastic pull at > 350m)
       const distToShip = this.position.distanceTo(this.tetherAnchor);
-      if (distToShip > 250) {
+      if (distToShip > 350) {
         const pullDir = new THREE.Vector3().subVectors(this.tetherAnchor, this.position).normalize();
-        this.velocity.addScaledVector(pullDir, 22.0 * delta);
+        this.velocity.addScaledVector(pullDir, 28.0 * delta);
       }
 
       this.nearCockpit = false;

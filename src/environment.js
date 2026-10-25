@@ -949,6 +949,9 @@ export class EnvironmentManager {
     upperFloor.receiveShadow = false;
     this.zoneUpperDeck.add(upperFloor);
 
+    // Immediately generate fully illuminated procedural corridor on frame 1
+    this.createProceduralCorridor();
+
     // Synchronously build all interactive decks and apparatus
     this.setupDoorwayPortal();
     this.createAftBulkhead();

@@ -25,6 +25,49 @@ THREE.DefaultLoadingManager.setURLModifier((url) => {
   return url;
 });
 
+// Bottom-Left Rendering & Asset Streaming Progress Controller
+let renderLoadingTimer = null;
+export function updateRenderProgress(label, percent, isComplete = false) {
+  if (typeof document === 'undefined') return;
+  const container = document.getElementById('render-loading-indicator');
+  const statusEl = document.getElementById('render-loading-status');
+  const percentEl = document.getElementById('render-loading-percent');
+  const fillEl = document.getElementById('render-loading-fill');
+  if (!container || !statusEl || !percentEl || !fillEl) return;
+
+  if (renderLoadingTimer) clearTimeout(renderLoadingTimer);
+  container.style.opacity = '1';
+  container.style.transform = 'translateY(0)';
+  statusEl.innerText = label;
+  const p = Math.min(100, Math.max(0, Math.round(percent)));
+  percentEl.innerText = `${p}%`;
+  fillEl.style.width = `${p}%`;
+
+  if (isComplete) {
+    fillEl.style.background = 'linear-gradient(90deg, #00ffaa, #38bdf8)';
+    renderLoadingTimer = setTimeout(() => {
+      container.style.opacity = '0';
+      container.style.transform = 'translateY(8px)';
+    }, 2200);
+  } else {
+    fillEl.style.background = 'linear-gradient(90deg, #00d4ff, #38bdf8, #00ffcc)';
+  }
+}
+
+THREE.DefaultLoadingManager.onStart = (url, loaded, total) => {
+  const shortName = (url.split('/').pop().split('?')[0] || 'ASSET').replace('.glb', '');
+  updateRenderProgress(`STREAMING: ${shortName.toUpperCase()}`, (loaded / (total || 1)) * 100);
+};
+
+THREE.DefaultLoadingManager.onProgress = (url, loaded, total) => {
+  const shortName = (url.split('/').pop().split('?')[0] || 'GEOMETRY').replace('.glb', '');
+  updateRenderProgress(`RENDERING: ${shortName.toUpperCase()}`, (loaded / (total || 1)) * 100);
+};
+
+THREE.DefaultLoadingManager.onLoad = () => {
+  updateRenderProgress('PIPELINE: ASSETS STABILIZED', 100, true);
+};
+
 class GameApp {
   constructor() {
     this.container = document.getElementById('canvas-container');
@@ -112,11 +155,11 @@ class GameApp {
       this.environment.setCockpitScreenTexture(this.ship.prowTexture);
     }
 
-    // Initial positioning & mode setup (Game begins at Starbase station before departure)
-    this.mode = 'starbase';
-    this.player.position.set(0, 0.30, 0);
+    // Initial positioning & mode setup (Game begins inside starship main corridor)
+    this.mode = 'interior';
+    this.player.position.set(0, 0.20, 0);
     this.ship.shipGroup.visible = false;
-    this.environment.setMode('starbase');
+    this.environment.setMode('interior');
 
     this.setupInteractions();
     this.setupUI();
@@ -215,14 +258,16 @@ class GameApp {
     this.player.onPilotSeatToggle = (isSeated) => {
       this.ship.isPiloted = isSeated;
       if (isSeated) {
-        this.player.flightViewMode = 'cockpit';
-        this.ship.viewMode = 'cockpit';
-        this.ship.shipGroup.visible = false;
-        this.environment.interiorGroup.visible = true;
+        // Default to 3rd person flight viewing ship from the outside
+        this.player.flightViewMode = 'exterior';
+        this.ship.viewMode = 'exterior';
+        this.ship.cameraSnapNeeded = true;
+        this.ship.shipGroup.visible = true;
+        this.environment.interiorGroup.visible = false;
         this.environment.spaceGroup.visible = true;
-        if (this.player.mesh) this.player.mesh.visible = true;
+        if (this.player.mesh) this.player.mesh.visible = false;
         if (sounds && sounds.playClick) sounds.playClick();
-        this.showNotification('HELM ENGAGED // STARSHIP UNDER DIRECT CONTROL // [ESC] TO EXIT', 0x00ff88);
+        this.showNotification('🚀 HELM ENGAGED // 3RD PERSON FLIGHT // PRESS [V] TO TOGGLE COCKPIT VIEW', 0x00f0ff);
       } else {
         this.player.flightViewMode = 'cockpit';
         this.ship.viewMode = 'cockpit';
@@ -558,34 +603,36 @@ class GameApp {
       if (this.tetherLine) this.tetherLine.visible = false;
 
       // Update HUD
-      this.dom.modeBadge.innerText = 'SPACE FLIGHT COMBAT';
+      this.dom.modeBadge.innerText = '3RD PERSON FLIGHT COMBAT';
       this.dom.modeBadge.classList.add('combat');
       this.dom.controlsTitle.innerText = 'CONTROLS [SPACE FLIGHT]';
       this.dom.ctrlActionName.innerText = 'Fire Plasma Lasers';
       this.dom.ctrlInteractName.innerText = 'Dock / Disembark';
       this.dom.boostLabel.innerText = 'AFTERBURNER BOOST';
     } else if (this.mode === 'eva') {
-      // EVA Spacewalk Mode
+      // EVA Spacewalk Mode (Jump Space Style Zero-G Floating)
       this.environment.setMode('eva');
       sounds.setInteriorMode(false);
 
       if (this.player.mesh) this.player.mesh.visible = true;
-      this.ship.shipGroup.visible = true; // Starship exterior visible
+      this.ship.shipGroup.position.set(0, 100, 250);
+      this.ship.shipGroup.visible = true; // Starship capital exterior (105m) fully visible!
       if (this.tetherLine) this.tetherLine.visible = true;
 
-      // Teleport player outside to exterior hull airlock platform
-      this.player.teleport(new THREE.Vector3(-18.2, 101.8, 250.0));
+      // Teleport player to exterior airlock platform alongside the starship hull
+      this.player.teleport(new THREE.Vector3(-14.0, 103.5, 252.0));
       this.player.isSpacewalk = true;
-      this.player.isTethered = true; // Mag-Boots engaged on hull platform
-      this.player.jetpackActive = false;
+      this.player.isTethered = false; // Authentic Zero-G floating by default!
+      this.player.jetpackActive = true;
+      this.player.velocity.set(0, 0, 0);
 
       // Update HUD
       this.dom.modeBadge.innerText = 'EVA SPACEWALK [ZERO-G]';
       this.dom.modeBadge.classList.add('combat');
-      this.dom.controlsTitle.innerText = 'CONTROLS [EVA SPACEWALK]';
-      this.dom.ctrlActionName.innerText = 'Fire Weapon';
+      this.dom.controlsTitle.innerText = 'CONTROLS [EVA ZERO-G]';
+      this.dom.ctrlActionName.innerText = 'Fire Weapon / Grapple';
       this.dom.ctrlInteractName.innerText = 'Re-enter Airlock';
-      this.dom.boostLabel.innerText = 'JETPACK THRUST FUEL';
+      this.dom.boostLabel.innerText = 'RCS THRUST AFTERBURNER';
     } else if (this.mode === 'interior') {
       // Inside starship interior
       this.environment.setMode('interior');

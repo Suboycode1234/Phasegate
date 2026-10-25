@@ -1,3 +1,72 @@
+
+// Procedural Sci-Fi Plating Texture Generator for Starship Hull
+export function createStarshipHullTexture(isHostile = false) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+
+  // Base armored plating background
+  ctx.fillStyle = isHostile ? '#160b0e' : '#0c131d';
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  // Plating tiles and panel seams
+  ctx.strokeStyle = isHostile ? '#381418' : '#1e293b';
+  ctx.lineWidth = 4;
+  for (let x = 0; x < 1024; x += 128) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, 1024);
+    ctx.stroke();
+  }
+  for (let y = 0; y < 1024; y += 128) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(1024, y);
+    ctx.stroke();
+  }
+
+  // Rivet micro-details & sub-panels
+  ctx.fillStyle = isHostile ? '#220e12' : '#141d2b';
+  for (let x = 32; x < 1024; x += 128) {
+    for (let y = 32; y < 1024; y += 128) {
+      ctx.fillRect(x, y, 64, 64);
+    }
+  }
+
+  // Energy conduits & illuminated panel circuits
+  ctx.strokeStyle = isHostile ? '#ff0044' : '#00f0ff';
+  ctx.lineWidth = 3;
+  ctx.shadowColor = isHostile ? '#ff0033' : '#00e5ff';
+  ctx.shadowBlur = 10;
+  
+  // Longitudinal circuit traces
+  [128, 384, 640, 896].forEach(pos => {
+    ctx.beginPath();
+    ctx.moveTo(pos, 64);
+    ctx.lineTo(pos, 448);
+    ctx.lineTo(pos + 48, 496);
+    ctx.lineTo(pos + 48, 960);
+    ctx.stroke();
+  });
+
+  // Emissive warning chevron accents
+  ctx.fillStyle = isHostile ? '#ff2200' : '#38bdf8';
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    ctx.moveTo(480 + i * 16, 200);
+    ctx.lineTo(492 + i * 16, 220);
+    ctx.lineTo(480 + i * 16, 240);
+    ctx.fill();
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(4, 4);
+  return tex;
+}
+
 // StarShip Flight Controller, 6-DOF Physics, Particle Thrusters & Weapons
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -56,7 +125,7 @@ export class ShipController {
 
     // Seated-Only Flight Control State (Ship moves only when player is sitting in the seat)
     this.isPiloted = false;
-    this.viewMode = 'cockpit';
+    this.viewMode = 'exterior';
     this.cameraSnapNeeded = true; // 'cockpit' (seated inside looking at live screens) or 'exterior' (chase cam)
 
     // Forward Prow Exterior Camera System
@@ -107,26 +176,62 @@ export class ShipController {
 
     const gltfLoader = new GLTFLoader();
     try {
-      console.log("Loading StarShip exterior...");
+      console.log("Loading StarShip capital exterior...");
       const gltf = await gltfLoader.loadAsync('/assets/ship_exterior.glb');
       this.model = gltf.scene;
-      // Grand, imposing heavy gunship scale (visible, imposing 34m presence)
-      this.model.scale.set(3.2, 3.2, 3.2);
-      this.model.rotation.y = Math.PI; // Face forward
+      
+      // Imposing 105m Capital Starship Scale (matching 120m interior corridor & grand hall)
+      this.model.scale.set(8.5, 8.5, 8.5);
+      this.model.rotation.y = Math.PI; // Face forward along -Z
+
+      const hullTexture = createStarshipHullTexture(false);
       this.model.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = true;
           child.receiveShadow = true;
-          if (child.material) {
-            child.material.metalness = 0.9;
-            child.material.roughness = 0.25;
-            if (child.material.emissive) {
-              child.material.emissiveIntensity = 2.0;
-            }
-          }
+          // Apply rich textured PBR sci-fi armor plating
+          child.material = new THREE.MeshStandardMaterial({
+            map: hullTexture,
+            color: 0xd0e8ff,
+            metalness: 0.85,
+            roughness: 0.32,
+            emissive: 0x002233,
+            emissiveIntensity: 0.8
+          });
         }
       });
+
+      // Exterior Airlock EVA Docking Port with green guide beacons & hazard trim
+      const airlockPortGroup = new THREE.Group();
+      airlockPortGroup.position.set(-14.0, 3.5, 5.0);
+      
+      const hatchRing = new THREE.Mesh(
+        new THREE.TorusGeometry(1.6, 0.22, 12, 24),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9, roughness: 0.2 })
+      );
+      hatchRing.rotation.y = Math.PI / 2;
+      
+      const hatchDoor = new THREE.Mesh(
+        new THREE.CircleGeometry(1.4, 24),
+        new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.3 })
+      );
+      hatchDoor.rotation.y = Math.PI / 2;
+
+      const beaconLight = new THREE.PointLight(0x00ffaa, 3.5, 20);
+      beaconLight.position.set(-0.6, 1.8, 0);
+
+      const beaconMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.2, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0x00ffaa })
+      );
+      beaconMesh.position.set(-0.6, 1.8, 0);
+
+      airlockPortGroup.add(hatchRing, hatchDoor, beaconLight, beaconMesh);
+      this.model.add(airlockPortGroup);
+      this.airlockWorldPos = new THREE.Vector3(-14.0, 103.5, 255.0);
+
       this.shipGroup.add(this.model);
+      console.log("✔ Capital Starship exterior (105m) loaded with high-tech armor & EVA airlock port!");
     } catch (e) {
       console.warn("Could not load ship_exterior.glb, falling back to procedural heavy battlecruiser:", e);
       this.createProceduralFighter();

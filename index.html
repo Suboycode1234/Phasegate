@@ -11,6 +11,7 @@
 
   <!-- Starfleet Holographic Loading Screen -->
   <div id="loading-screen" style="position: fixed; inset: 0; background: #020408; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: Orbitron, sans-serif; transition: opacity 0.6s ease, visibility 0.6s;">
+    <img src="/assets/logo.png" alt="PhaseGate Neon Portal" style="width: 140px; height: 140px; margin-bottom: 18px; filter: drop-shadow(0 0 24px rgba(0,240,255,0.85)); animation: emblemGlow 3s infinite ease-in-out;" />
     <div style="font-size: 32px; font-weight: 900; letter-spacing: 6px; color: #fff; margin-bottom: 8px;">PHASE<span style="color: #00f0ff;">GATE</span></div>
     <div style="font-size: 11px; letter-spacing: 3px; color: #38bdf8; margin-bottom: 24px;">RIFTBOUND STUDIOS // WEBRTC P2P</div>
     <div style="width: 280px; height: 4px; background: rgba(0, 240, 255, 0.2); border-radius: 2px; overflow: hidden; position: relative; margin-bottom: 12px;">
@@ -38,7 +39,7 @@
     <!-- Top Header Bar -->
     <header class="hud-header">
       <div class="system-title">
-        <div class="system-logo">SPACE<span>3D</span></div>
+        <div class="system-logo" style="display: flex; align-items: center; gap: 8px;"><img src="/assets/logo.png" style="width: 28px; height: 28px; filter: drop-shadow(0 0 8px #00f0ff);" alt="Logo" />PHASE<span style="color: #00f0ff;">GATE</span></div>
         <div id="mode-badge" class="mode-badge">INTERIOR RECON</div>
       </div>
 
@@ -77,6 +78,20 @@
 
     <!-- Bottom Telemetry & Controls Footer -->
     <footer class="hud-footer">
+      <!-- Bottom-Left Rendering & Asset Streaming Loading Bar -->
+      <div id="render-loading-indicator" class="render-loading-indicator">
+        <div class="render-loading-header">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="render-pulse-dot"></span>
+            <span id="render-loading-status">PIPELINE: INITIALIZING</span>
+          </div>
+          <span id="render-loading-percent">100%</span>
+        </div>
+        <div class="render-loading-track">
+          <div id="render-loading-fill" class="render-loading-fill" style="width: 100%;"></div>
+        </div>
+      </div>
+
       <!-- Shield, Hull & Boost Gauges -->
       <div class="gauges-panel">
         <div class="gauge-row gauge-shield">

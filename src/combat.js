@@ -1,3 +1,5 @@
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createStarshipHullTexture } from './ship.js';
 // Combat system: Laser Projectiles, Collision Physics, Sparks and Rogue Drone AI
 import * as THREE from 'three';
 import { sounds } from './audio.js';
@@ -203,51 +205,88 @@ export class CombatManager {
     return queryPos.distanceTo(this.jammer.position) < this.jammer.radius;
   }
 
-  initEnemies() {
-    // Spawn patrolling rogue pirate drones
-    const droneCount = 6;
-    for (let i = 0; i < droneCount; i++) {
-      this.spawnEnemyDrone(i);
+  async initEnemies() {
+    const gltfLoader = new GLTFLoader();
+    let templateScene = null;
+    try {
+      const gltf = await gltfLoader.loadAsync('/assets/ship_exterior.glb');
+      templateScene = gltf.scene;
+    } catch (e) {
+      console.warn("Could not load ship_exterior.glb for enemies, using procedural warship:", e);
+    }
+
+    const shipCount = 5;
+    for (let i = 0; i < shipCount; i++) {
+      this.spawnEnemyWarship(i, templateScene);
     }
   }
 
-  spawnEnemyDrone(index) {
+  spawnEnemyWarship(index, templateScene) {
     const group = new THREE.Group();
+    const hostileTexture = createStarshipHullTexture(true);
 
-    // Geometric predatory drone design
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x882222, metalness: 0.9, roughness: 0.2 });
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0044 });
+    if (templateScene) {
+      const enemyModel = templateScene.clone(true);
+      // Imposing 68-meter Rogue Pirate Battlecruiser Scale
+      enemyModel.scale.set(5.5, 5.5, 5.5);
+      enemyModel.rotation.y = Math.PI; // Face forward
+      enemyModel.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          child.material = new THREE.MeshStandardMaterial({
+            map: hostileTexture,
+            color: 0xff99aa,
+            metalness: 0.88,
+            roughness: 0.30,
+            emissive: 0x44050d,
+            emissiveIntensity: 0.9
+          });
+        }
+      });
+      group.add(enemyModel);
+    } else {
+      // Procedural Heavy Gunship fallback
+      const hullMat = new THREE.MeshStandardMaterial({ color: 0x241216, metalness: 0.9, roughness: 0.25 });
+      const core = new THREE.Mesh(new THREE.BoxGeometry(10, 4, 30), hullMat);
+      group.add(core);
+    }
 
-    const core = new THREE.Mesh(new THREE.OctahedronGeometry(1.8, 0), bodyMat);
-    core.scale.set(1.5, 0.7, 2.2);
-    group.add(core);
+    // Hostile Crimson Plasma Thruster Plumes
+    const thrusterLight = new THREE.PointLight(0xff0033, 4.5, 30);
+    thrusterLight.position.set(0, 1.2, 15);
+    group.add(thrusterLight);
 
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 12), eyeMat);
-    eye.position.set(0, 0, -2.0);
-    group.add(eye);
+    const flameMat = new THREE.MeshBasicMaterial({ color: 0xff0044, wireframe: false });
+    const flameL = new THREE.Mesh(new THREE.ConeGeometry(1.2, 8.0, 8), flameMat);
+    flameL.rotation.x = -Math.PI / 2;
+    flameL.position.set(-3.2, 1.2, 18);
+    const flameR = new THREE.Mesh(new THREE.ConeGeometry(1.2, 8.0, 8), flameMat);
+    flameR.rotation.x = -Math.PI / 2;
+    flameR.position.set(3.2, 1.2, 18);
+    group.add(flameL, flameR);
 
-    // Drone red glow
-    const light = new THREE.PointLight(0xff0044, 2.2, 18);
-    light.position.set(0, 0, -2.0);
-    group.add(light);
-
-    // Initial position in asteroid orbit
-    const angle = (index / 6) * Math.PI * 2;
-    const dist = 140 + Math.random() * 90;
-    group.position.set(Math.cos(angle) * dist, 100 + (Math.random() - 0.5) * 70, Math.sin(angle) * dist + 120);
+    // Initial tactical patrol coordinates in orbital asteroid belt
+    const angle = (index / 5) * Math.PI * 2;
+    const dist = 180 + Math.random() * 120;
+    const yPos = 80 + (Math.random() - 0.5) * 80;
+    group.position.set(Math.cos(angle) * dist, yPos, Math.sin(angle) * dist + 160);
 
     this.combatGroup.add(group);
 
     const enemy = {
       mesh: group,
-      health: 65,
-      maxHealth: 65,
-      speed: 24.0,
-      fireTimer: 1.5 + Math.random() * 2,
+      health: 120,
+      maxHealth: 120,
+      speed: 32.0,
+      fireTimer: 1.2 + Math.random() * 2.0,
       orbitAngle: angle,
       orbitRadius: dist,
-      orbitSpeed: 0.15 + Math.random() * 0.1,
-      radius: 2.5,
+      orbitSpeed: 0.12 + Math.random() * 0.08,
+      altitudeOffset: yPos,
+      altitudePhase: Math.random() * Math.PI * 2,
+      evasionTimer: 0,
+      radius: 8.5,
       alive: true
     };
 
@@ -541,35 +580,54 @@ export class CombatManager {
       const toTarget = targetCombatPos.clone().sub(enemy.mesh.position);
       const distToTarget = toTarget.length();
 
-      if (distToTarget < 200) {
-        // Combat state: Face target & pursue
-        enemy.mesh.lookAt(targetCombatPos);
+      if (distToTarget < 380) {
+        // Combat state: Smooth 3D pursuit, banking, and tactical engagement
+        const targetLook = targetCombatPos.clone().add(new THREE.Vector3(0, 0, 0));
+        
+        // Orient towards target with smooth banking roll
+        const currentPos = enemy.mesh.position.clone();
+        enemy.mesh.lookAt(targetLook);
 
         const moveDir = toTarget.clone().normalize();
-        if (distToTarget > 40) {
+        
+        // Evasive banking maneuvers
+        enemy.altitudePhase += delta * 1.8;
+        const evasiveStrafe = new THREE.Vector3(-moveDir.z, Math.sin(enemy.altitudePhase) * 0.4, moveDir.x).normalize();
+
+        if (distToTarget > 55) {
           enemy.mesh.position.addScaledVector(moveDir, enemy.speed * delta);
+          enemy.mesh.position.addScaledVector(evasiveStrafe, 12.0 * delta);
         }
 
-        // Fire at player
+        // Tactical Dual Laser Salvo
         enemy.fireTimer -= delta;
         if (enemy.fireTimer <= 0) {
-          enemy.fireTimer = 2.2 + Math.random() * 1.5;
+          enemy.fireTimer = 1.6 + Math.random() * 1.4;
           sounds.playLaser(false);
 
+          // Alternating left & right wing hardpoints
+          const wingSide = (Math.random() > 0.5) ? -6.5 : 6.5;
+          const laserOrigin = enemy.mesh.position.clone().add(new THREE.Vector3(wingSide, 0, -4).applyQuaternion(enemy.mesh.quaternion));
+
           this.addLaser({
-            position: enemy.mesh.position.clone(),
+            position: laserOrigin,
             direction: moveDir,
-            speed: 130.0,
-            damage: 15,
+            speed: 160.0,
+            damage: 18,
             isPlayer: false
           });
         }
       } else {
-        // Orbit patrol state
+        // 3D Orbital Patrol around asteroid fields
         enemy.orbitAngle += enemy.orbitSpeed * delta;
-        enemy.mesh.position.x = Math.cos(enemy.orbitAngle) * enemy.orbitRadius;
-        enemy.mesh.position.z = Math.sin(enemy.orbitAngle) * enemy.orbitRadius + 120;
-        enemy.mesh.rotation.y += delta * 0.8;
+        enemy.altitudePhase += delta * 0.6;
+        const targetX = Math.cos(enemy.orbitAngle) * enemy.orbitRadius;
+        const targetZ = Math.sin(enemy.orbitAngle) * enemy.orbitRadius + 160;
+        const targetY = enemy.altitudeOffset + Math.sin(enemy.altitudePhase) * 35.0;
+
+        const nextPos = new THREE.Vector3(targetX, targetY, targetZ);
+        enemy.mesh.lookAt(nextPos);
+        enemy.mesh.position.lerp(nextPos, delta * 2.0);
       }
     });
   }

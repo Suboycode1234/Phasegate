@@ -92,7 +92,7 @@ Choose from three specialized crew roles, each featuring unique abilities and ta
 ```bash
 # Clone repository
 git clone https://github.com/Suboycode1234/Phasegate.git
-cd Spacex3D
+cd Phasegate
 
 # Install dependencies
 npm install
@@ -104,16 +104,11 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
-## 🚢 Deployment (Vercel)
+## 🎮 Play in Browser
 
-PhaseGate is optimized for zero-config deployment on **Vercel**:
+Jump straight into the cockpit with zero installation required! Play PhaseGate directly in your browser:
 
-1. Push your repository to GitHub.
-2. In the [Vercel Dashboard](https://vercel.com/dashboard), click **Add New Project** and import `Spacex3D`.
-3. **Important — Enable Git LFS**:
-   - Go to **Project Settings** ➔ **Git**.
-   - Under **Git LFS**, toggle the switch to **ON**.
-4. Click **Deploy**. Vercel will install dependencies, retrieve the 3D assets via LFS, and build the production bundle automatically.
+👉 **[https://phasegate-lac.vercel.app/](https://phasegate-lac.vercel.app/)**
 
 ---
 

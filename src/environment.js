@@ -923,12 +923,49 @@ export class EnvironmentManager {
       }
     ];
 
-    // 1. Load Corridor at 1:1 scale (Floor aligned flush at Y = 0)
-    try {
-      console.log("Loading Sci-Fi Corridor...");
-      const gltfCorridor = await gltfLoader.loadAsync('/assets/ship_corridor.glb');
+    // =========================================================================
+    // FRAME 1 IMMEDIATE FOUNDATIONS & INTERACTIVE STRUCTURES
+    // All portals, consoles, ladders, armory pedestals, and lighting exist immediately!
+    // =========================================================================
+
+    // Solid procedural floor plates so player NEVER falls into void while streaming
+    const deckMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.35, metalness: 0.75 });
+    
+    // Cockpit Bridge Deck Floor Plate (Z: -17 to -27)
+    const cockpitFloor = new THREE.Mesh(new THREE.BoxGeometry(10.0, 0.4, 12.0), deckMat);
+    cockpitFloor.position.set(0, -0.2, -22.5);
+    cockpitFloor.receiveShadow = false;
+    this.zoneCockpit.add(cockpitFloor);
+
+    // Lower Deck Engineering / Cryo Floor Plate (X: 6, Z: 49, Y: -6.28)
+    const lowerFloor = new THREE.Mesh(new THREE.BoxGeometry(16.0, 0.4, 24.0), deckMat);
+    lowerFloor.position.set(6.0, -6.48, 49.0);
+    lowerFloor.receiveShadow = false;
+    this.zoneLowerDeck.add(lowerFloor);
+
+    // Upper Mezzanine Floor Plate (Y: 8.35, Z: 68)
+    const upperFloor = new THREE.Mesh(new THREE.BoxGeometry(20.0, 0.4, 40.0), deckMat);
+    upperFloor.position.set(0, 8.15, 68.0);
+    upperFloor.receiveShadow = false;
+    this.zoneUpperDeck.add(upperFloor);
+
+    // Synchronously build all interactive decks and apparatus
+    this.setupDoorwayPortal();
+    this.createAftBulkhead();
+    this.setupCockpitConsole();
+    this.createInteriorLaddersAndGantries();
+    this.createArmoryDeck();
+    this.setupInteriorAirlock();
+    this.setupInteriorLighting();
+
+    // =========================================================================
+    // PARALLEL ASYNCHRONOUS GLTF ASSET STREAMING
+    // None of these models block each other. Lightweight models pop in immediately!
+    // =========================================================================
+
+    // 1. Corridor (10.6 MB)
+    gltfLoader.load('/assets/ship_corridor.glb', (gltfCorridor) => {
       const corridor = gltfCorridor.scene;
-      // Walking floor plate inside model is at Y = 0.31, so -0.31 aligns floor to exactly Y = 0.0
       corridor.position.set(0, -0.31, 0);
       corridor.scale.set(1.0, 1.0, 1.0);
       corridor.traverse((child) => {
@@ -942,29 +979,21 @@ export class EnvironmentManager {
         }
       });
       this.zoneCorridor.add(corridor);
-      console.log("Corridor loaded & floor aligned at Y = 0!");
-    } catch (e) {
+      console.log("✔ Corridor model loaded!");
+    }, undefined, (e) => {
       console.warn("Corridor asset error, building procedural corridor fallback:", e);
       this.createProceduralCorridor();
-    }
+    });
 
-    // 2. Load Main Grand Sci-Fi Hall (Merged seamlessly at Z = 17.6)
-    try {
-      console.log("Loading Grand Sci-Fi Room...");
-      const gltfRoom = await gltfLoader.loadAsync('/assets/ship_interior_room.glb');
+    // 2. Grand Sci-Fi Room (1.7 MB - finishes in <300ms!)
+    gltfLoader.load('/assets/ship_interior_room.glb', (gltfRoom) => {
       const room = gltfRoom.scene;
-      // Floor in GLB is at Y = -4.25, and doors are at Z = -111.8.
-      // Offset Y: +4.25 sets floor to Y = 0.0. Offset Z: +129.52 connects doors to corridor at Z = +17.6.
       room.position.set(0, 4.25, 129.52);
       room.scale.set(1.0, 1.0, 1.0);
-
       room.traverse((child) => {
-        // Hide decorative backdrop cards and camera
         if (child.name.includes('Space') || child.name.includes('Camera')) {
           child.visible = false;
         }
-
-        // Identify and bind functional blast doors (initialize in closed state)
         if (child.name === 'Left_Door') {
           this.doors.blastDoor.leftMesh = child;
           this.doors.blastDoor.baseLeftX = child.position.x;
@@ -975,7 +1004,6 @@ export class EnvironmentManager {
           this.doors.blastDoor.baseRightX = child.position.x;
           child.position.x = child.position.x - this.doors.blastDoor.closedOffset;
         }
-
         if (child.isMesh) {
           child.receiveShadow = false; child.frustumCulled = true;
           child.castShadow = false; child.frustumCulled = true;
@@ -985,19 +1013,40 @@ export class EnvironmentManager {
           }
         }
       });
-
       this.zoneGrandHall.add(room);
-      console.log("Grand Sci-Fi Hall loaded & merged seamlessly with corridor!");
-    } catch (e) {
+      console.log("✔ Grand Sci-Fi Room model loaded!");
+    }, undefined, (e) => {
       console.warn("Could not load ship_interior_room.glb:", e);
-    }
+    });
 
-    // 3. Load Storage + Corridor Cargo Bay (FBX.fbx conversion) - Upper Deck Mezzanine
-    try {
-      console.log("Loading Starship Storage + Corridor Cargo Bay...");
-      const gltfStorage = await gltfLoader.loadAsync('/assets/ship_storage_corridor.glb');
+    // 3. Command Nexus Cockpit (23.8 MB - finishes in ~2s!)
+    gltfLoader.load('/assets/ship_cockpit.glb', (gltfCockpit) => {
+      const cockpit = gltfCockpit.scene;
+      cockpit.position.set(0, 1.138, -19.256);
+      cockpit.rotation.set(0, 0, 0);
+      cockpit.scale.set(1.85, 2.30, 1.85);
+      this.cockpitScreenMats = [];
+      cockpit.traverse((child) => {
+        if (child.isMesh) {
+          child.receiveShadow = false; child.frustumCulled = true;
+          child.castShadow = false;
+          const mat = child.material;
+          if (mat) {
+            mat.roughness = 0.45;
+            mat.metalness = 0.82;
+            mat.side = THREE.DoubleSide;
+          }
+        }
+      });
+      this.zoneCockpit.add(cockpit);
+      console.log("✔ Starship Command Nexus Cockpit model loaded!");
+    }, undefined, (e) => {
+      console.warn("Could not load ship_cockpit.glb:", e);
+    });
+
+    // 4. Storage + Cargo Bay Mezzanine (119.7 MB - streams in background)
+    gltfLoader.load('/assets/ship_storage_corridor.glb', (gltfStorage) => {
       const storageBay = gltfStorage.scene;
-      // Positioned above the main room at Y = 8.5m and scaled to 0.11 for natural character clearance
       storageBay.position.set(0, 8.35, 68.0);
       storageBay.scale.set(0.26, 0.26, 0.26);
       storageBay.traverse((child) => {
@@ -1018,7 +1067,6 @@ export class EnvironmentManager {
       });
       this.zoneUpperDeck.add(storageBay);
 
-      // Extract and initialize built-in pneumatic sliding door animations
       if (gltfStorage.animations && gltfStorage.animations.length > 0) {
         this.storageMixer = new THREE.AnimationMixer(storageBay);
         this.storageDoorActions = [];
@@ -1030,26 +1078,19 @@ export class EnvironmentManager {
             this.storageDoorActions.push(action);
           }
         });
-        console.log(`Integrated ${this.storageDoorActions.length} built-in storage door animations!`);
       }
-
-      console.log("Enlarged Character-Scale Storage Bay integrated above the Grand Hall!");
-    } catch (e) {
+      console.log("✔ Starship Storage Bay model loaded and integrated!");
+    }, undefined, (e) => {
       console.warn("Could not load ship_storage_corridor.glb:", e);
-    }
+    });
 
-    // 4. Load Lower Deck / CryoPod & Engineering Bay - Sub-Deck Level
-    try {
-      console.log("Loading Ship Lower Deck & CryoPod Bay...");
-      const gltfLower = await gltfLoader.loadAsync('/assets/ship_lower_deck.glb');
+    // 5. Lower Deck Cryo & Engineering Bay (99.4 MB - streams in background)
+    gltfLoader.load('/assets/ship_lower_deck.glb', (gltfLower) => {
       const lowerDeck = gltfLower.scene;
-      // Positioned directly at the lower ladder landing (X=6.0, Z=49.0), floor aligned flush at Y=-6.28m, height calibrated by a few centimetres (+5%) so it does not pierce the main floor
       lowerDeck.position.set(6.0, -6.35, 49.0);
       lowerDeck.scale.set(1.0, 1.05, 1.0);
 
-      // Bind functional compartment sliding doors and tune materials
       lowerDeck.traverse((child) => {
-        // Match compartment and bulkhead doors
         this.lowerDeckDoors.forEach((door) => {
           if (child.name === door.panel1Name) {
             door.panel1 = child;
@@ -1062,12 +1103,9 @@ export class EnvironmentManager {
         });
       });
 
-      // Enhance all flat and untextured cryo pod meshes, consoles, screens, and hull panels
       this.enhanceLowerDeckMaterials(lowerDeck);
 
-      // Construct illuminated sci-fi door status bars and threshold strips for each lower door
       this.lowerDeckDoors.forEach((door) => {
-        // Lintel status indicator bar
         const indMat = new THREE.MeshBasicMaterial({ color: 0x00d4ff });
         const indGeom = (door.axis === 'z') 
           ? new THREE.BoxGeometry(0.08, 0.08, 0.7) 
@@ -1077,7 +1115,6 @@ export class EnvironmentManager {
         this.zoneLowerDeck.add(statusMesh);
         door.statusLight = statusMesh;
 
-        // Glowing floor threshold strip
         const threshMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.65 });
         const threshGeom = (door.axis === 'z') 
           ? new THREE.BoxGeometry(0.35, 0.02, 1.2) 
@@ -1090,7 +1127,6 @@ export class EnvironmentManager {
       this.zoneLowerDeck.add(lowerDeck);
       this.lowerDeckScene = lowerDeck;
 
-      // Extract and initialize built-in CryoPod canopy opening/closing animations
       if (gltfLower.animations && gltfLower.animations.length > 0) {
         this.cryoMixer = new THREE.AnimationMixer(lowerDeck);
         this.cryoDoorActions = [];
@@ -1102,62 +1138,11 @@ export class EnvironmentManager {
             this.cryoDoorActions.push(action);
           }
         });
-        console.log(`Integrated ${this.cryoDoorActions.length} built-in CryoPod canopy animations!`);
       }
-
-      console.log(`Lower Cryo & Engineering Deck loaded with ${this.lowerDeckDoors.length} functional sliding compartment doors!`);
-    } catch (e) {
+      console.log("✔ Lower Deck Cryo & Engineering model loaded and integrated!");
+    }, undefined, (e) => {
       console.warn("Could not load ship_lower_deck.glb:", e);
-    }
-
-    // 5. Load Cockpit Flight Deck (Starship Command Nexus from H:\SpaceX3dAntigravity\Models\ship\Interior\Cockpit)
-    try {
-      console.log("Loading Starship Command Nexus Cockpit...");
-      const gltfCockpit = await gltfLoader.loadAsync('/assets/ship_cockpit.glb');
-      const cockpit = gltfCockpit.scene;
-      // Fitted cleanly to the aft bulkhead portal at Z = -17.5
-      cockpit.position.set(0, 1.138, -19.256);
-      cockpit.rotation.set(0, 0, 0);
-      cockpit.scale.set(1.85, 2.30, 1.85);
-      this.cockpitScreenMats = [];
-      cockpit.traverse((child) => {
-        if (child.isMesh) {
-          child.receiveShadow = false; child.frustumCulled = true;
-          child.castShadow = false;
-          const mat = child.material;
-          if (mat) {
-            mat.roughness = 0.45;
-            mat.metalness = 0.82;
-            mat.side = THREE.DoubleSide;
-          }
-        }
-      });
-      this.zoneCockpit.add(cockpit);
-      console.log("Starship Command Nexus Cockpit loaded at corridor aft terminus!");
-    } catch (e) {
-      console.warn("Could not load ship_cockpit.glb:", e);
-    }
-
-    // 6. Door Threshold Transition & Illuminated Status Indicator
-    this.setupDoorwayPortal();
-
-    // 7. Aft Bulkhead Pressure Door Portal leading to Cockpit Bridge (Z = -17.5)
-    this.createAftBulkhead();
-
-    // 8. Interactive Cockpit Command Console (in enlarged Cockpit Bridge)
-    this.setupCockpitConsole();
-
-    // 9. Climbable Access Ladders & Mezzanine Observation Gantries
-    this.createInteriorLaddersAndGantries();
-
-    // 10. Starship Armory Deck with Weapon Pedestals & Holographic Displays
-    this.createArmoryDeck();
-
-    // 11. Interior EVA Airlock Chamber at Grand Hall Port Wall
-    this.setupInteriorAirlock();
-
-    // 12. Complete Interior Illumination Network
-    this.setupInteriorLighting();
+    });
   }
 
   setupDoorwayPortal() {
@@ -2095,11 +2080,10 @@ export class EnvironmentManager {
     // Departure Airlock Gate to Starship
     this.setupStarbaseDepartureGate();
 
-    // 3. Asynchronously load high-detail Starbase model (if available)
+    // 3. Asynchronously load high-detail Starbase model in background without blocking
     const gltfLoader = new GLTFLoader();
-    try {
-      console.log("Loading Starbase station model...");
-      const gltf = await gltfLoader.loadAsync('/assets/starbase.glb');
+    console.log("Streaming Starbase station model in background...");
+    gltfLoader.load('/assets/starbase.glb', (gltf) => {
       if (gltf && gltf.scene) {
         this.starbaseModel = gltf.scene;
         this.starbaseModel.position.set(0, 0.26, 0);
@@ -2120,18 +2104,12 @@ export class EnvironmentManager {
           }
         });
         this.starbaseGroup.add(this.starbaseModel);
-        console.log("Starbase station loaded successfully!");
+        this.setupOrbitalStarbase(this.starbaseModel);
+        console.log("Starbase station loaded and upgraded successfully!");
       }
-    } catch (e) {
+    }, undefined, (e) => {
       console.warn("Could not load starbase.glb, using procedural station concourse:", e);
-    }
-
-    // Also place Orbital Starbase in space sector so it can be seen and visited in flight
-    try {
-      this.setupOrbitalStarbase();
-    } catch (e) {
-      console.warn("Could not setup orbital starbase:", e);
-    }
+    });
   }
 
   setupStarbaseDepartureGate() {
@@ -2164,10 +2142,10 @@ export class EnvironmentManager {
     this.starbaseGroup.add(gateGroup);
   }
 
-  setupOrbitalStarbase() {
-    const gltfLoader = new GLTFLoader();
-    gltfLoader.load('/assets/starbase.glb', (gltf) => {
-      const orbital = gltf.scene;
+  setupOrbitalStarbase(sourceScene = null) {
+    if (this.orbitalStarbase) return;
+
+    const setupScene = (orbital) => {
       orbital.position.set(0, 100, -380);
       orbital.scale.set(1.4, 1.4, 1.4);
       orbital.traverse((c) => {
@@ -2180,6 +2158,18 @@ export class EnvironmentManager {
       this.orbitalStarbase = orbital;
       this.dockingPosition = new THREE.Vector3(0, 100, -380);
       console.log("Orbital Starbase station ready in space flight sector!");
+    };
+
+    if (sourceScene) {
+      setupScene(sourceScene.clone(true));
+      return;
+    }
+
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.load('/assets/starbase.glb', (gltf) => {
+      if (gltf && gltf.scene) {
+        setupScene(gltf.scene);
+      }
     }, undefined, (e) => console.warn("Orbital Starbase load error:", e));
   }
 

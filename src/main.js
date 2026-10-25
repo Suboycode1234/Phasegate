@@ -411,10 +411,7 @@ class GameApp {
     };
 
     const selectPilot = async (pilotId) => {
-      await this.player.setCharacter(pilotId);
-      if (pilotId === 'pilot3') {
-        this.player.equipWeapon('dual_grapplers');
-      }
+      // 1. Immediately update UI and dismiss modal for zero latency
       setPilotUI(pilotId);
       const names = {
         pilot1: 'CAPTAIN VANGUARD [FLEET COMMANDER]',
@@ -422,7 +419,19 @@ class GameApp {
         pilot3: 'SPECTRE SCOUT [DUAL GRAPPLERS]'
       };
       this.showNotification(`👤 DEPLOYED: ${names[pilotId] || pilotId}`, 0x00f0ff);
-      this.dom.modalCharSelect.classList.remove('active');
+      if (this.dom.modalCharSelect) {
+        this.dom.modalCharSelect.classList.remove('active');
+      }
+
+      // 2. Load character model smoothly
+      try {
+        await this.player.setCharacter(pilotId);
+        if (pilotId === 'pilot3') {
+          this.player.equipWeapon('dual_grapplers');
+        }
+      } catch (err) {
+        console.warn('Error switching character:', err);
+      }
     };
 
     if (this.dom.btnSelectPilot1) this.dom.btnSelectPilot1.addEventListener('click', () => selectPilot('pilot1'));

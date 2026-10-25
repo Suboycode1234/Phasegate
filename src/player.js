@@ -147,14 +147,15 @@ export class PlayerController {
     this.mesh = null;
     this.mixer = null;
     this.actions = {};
+    this.cachedClips = PlayerController.cachedClips || (PlayerController.cachedClips = {});
     this.currentAction = null;
     this.currentUpperAction = null;
     this.currentLowerAction = null;
     this.skeleton = null;
 
     // Physics / movement state
-    this.floorY = 0.08; // Soles rest cleanly on top of floor plates without clipping
-    this.position = new THREE.Vector3(0, this.floorY, 0);
+    this.floorY = 0.20; // Soles rest cleanly on top of floor plates without clipping
+    this.position = new THREE.Vector3(0, 0.20, 0);
     this.velocity = new THREE.Vector3();
     this.isGrounded = true;
     this.isCrouching = false;
@@ -348,19 +349,8 @@ export class PlayerController {
     if (this.isLoadingCharacter) return;
     this.isLoadingCharacter = true;
 
-    // Clean up previous character mesh and mixer
-    if (this.mesh) {
-      this.scene.remove(this.mesh);
-      this.mesh = null;
-    }
-    if (this.mixer) {
-      this.mixer.stopAllAction();
-      this.mixer = null;
-    }
-    this.actions = {};
-    this.currentAction = null;
-    this.currentUpperAction = null;
-    this.currentLowerAction = null;
+    const previousMesh = this.mesh;
+    const previousMixer = this.mixer;
 
     const gltfLoader = new GLTFLoader();
 
@@ -407,13 +397,18 @@ export class PlayerController {
           }
         });
 
-        try {
-          const idleGltf = await gltfLoader.loadAsync('/assets/anim_idle.glb');
-          if (idleGltf.animations && idleGltf.animations.length > 0) {
-            idleClip = idleGltf.animations[0];
+        if (this.cachedClips['idle']) {
+          idleClip = this.cachedClips['idle'];
+        } else {
+          try {
+            const idleGltf = await gltfLoader.loadAsync('/assets/anim_idle.glb');
+            if (idleGltf.animations && idleGltf.animations.length > 0) {
+              idleClip = idleGltf.animations[0];
+              this.cachedClips['idle'] = idleClip;
+            }
+          } catch (e) {
+            console.warn('Could not load idle clip for pilot2:', e);
           }
-        } catch (e) {
-          console.warn('Could not load idle clip for pilot2:', e);
         }
 
       } else if (characterId === 'pilot3') {
@@ -456,13 +451,18 @@ export class PlayerController {
         });
 
         // Always load high-quality breathing humanoid idle animation from anim_idle.glb (do not use export T-pose)
-        try {
-          const idleGltf = await gltfLoader.loadAsync('/assets/anim_idle.glb');
-          if (idleGltf.animations && idleGltf.animations.length > 0) {
-            idleClip = idleGltf.animations[0];
+        if (this.cachedClips['idle']) {
+          idleClip = this.cachedClips['idle'];
+        } else {
+          try {
+            const idleGltf = await gltfLoader.loadAsync('/assets/anim_idle.glb');
+            if (idleGltf.animations && idleGltf.animations.length > 0) {
+              idleClip = idleGltf.animations[0];
+              this.cachedClips['idle'] = idleClip;
+            }
+          } catch (e) {
+            console.warn('Could not load idle clip for pilot3:', e);
           }
-        } catch (e) {
-          console.warn('Could not load idle clip for pilot3:', e);
         }
 
       } else {
@@ -484,8 +484,20 @@ export class PlayerController {
         });
         if (gltf.animations && gltf.animations.length > 0) {
           idleClip = gltf.animations[0];
+          this.cachedClips['idle'] = idleClip;
         }
       }
+
+      if (previousMesh && previousMesh !== this.mesh) {
+        this.scene.remove(previousMesh);
+      }
+      if (previousMixer) {
+        previousMixer.stopAllAction();
+      }
+      this.actions = {};
+      this.currentAction = null;
+      this.currentUpperAction = null;
+      this.currentLowerAction = null;
 
       this.scene.add(this.mesh);
       this.mesh.position.copy(this.position);
@@ -522,9 +534,15 @@ export class PlayerController {
 
       await Promise.all(animConfigs.map(async (config) => {
         try {
-          const animGltf = await gltfLoader.loadAsync(config.url);
-          if (animGltf.animations && animGltf.animations.length > 0) {
-            const clip = animGltf.animations[0];
+          let clip = this.cachedClips[config.key];
+          if (!clip) {
+            const animGltf = await gltfLoader.loadAsync(config.url);
+            if (animGltf.animations && animGltf.animations.length > 0) {
+              clip = animGltf.animations[0];
+              this.cachedClips[config.key] = clip;
+            }
+          }
+          if (clip) {
             clip.name = config.key;
 
             clip.tracks.forEach(track => {
@@ -1029,8 +1047,8 @@ export class PlayerController {
         const pullSpeed = this.isSpacewalk ? 36.0 : 18.0;
         this.velocity.lerp(pullDir.multiplyScalar(pullSpeed), Math.min(1.0, delta * 9.0));
         this.position.addScaledVector(this.velocity, delta);
-        if (!this.isSpacewalk && this.position.y < 0.08) {
-          this.position.y = 0.08;
+        if (!this.isSpacewalk && this.position.y < 0.20) {
+          this.position.y = 0.20;
         }
         return; // Automatic tether winch takes over movement until docked
       }
@@ -1419,14 +1437,14 @@ export class PlayerController {
       }
 
       // Base floor height determination with ROCK-SOLID floor stability
-      let baseFloorY = (currentMode === 'starbase') ? 0.30 : 0.08;
+      let baseFloorY = (currentMode === 'starbase') ? 0.30 : 0.20;
 
       if (currentMode === 'interior') {
         if (this.deckLevel === 'upper') {
           baseFloorY = 8.5;
           if (this.position.y < 4.0) {
             this.deckLevel = 'main';
-            baseFloorY = 0.08;
+            baseFloorY = 0.20;
           }
         } else if (this.deckLevel === 'upper') {
         // Upper Mezzanine Storage & Cargo Cathedral Deck:
@@ -1436,11 +1454,11 @@ export class PlayerController {
           baseFloorY = -6.28;
           if (this.position.y > -0.2) {
             this.deckLevel = 'main';
-            baseFloorY = 0.08;
+            baseFloorY = 0.20;
           }
         } else {
           // Main Deck: RIGID solid floor plate at Y = 0.08
-          baseFloorY = 0.08;
+          baseFloorY = 0.20;
           this.deckLevel = 'main';
 
           // Strictly require ladder climb or hatch descent to change deck levels

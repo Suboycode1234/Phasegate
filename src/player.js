@@ -345,6 +345,34 @@ export class PlayerController {
     }
   }
 
+  loadGLBWithProgress(url, label, gltfLoader) {
+    return new Promise((resolve, reject) => {
+      gltfLoader.load(
+        url,
+        (gltf) => {
+          if (typeof window !== 'undefined' && window.updateRenderProgress) {
+            window.updateRenderProgress(`DEPLOYED: ${label}`, 100, true);
+          }
+          resolve(gltf);
+        },
+        (xhr) => {
+          if (typeof window !== 'undefined' && window.updateRenderProgress) {
+            if (xhr.lengthComputable && xhr.total > 0) {
+              const pct = Math.round((xhr.loaded / xhr.total) * 100);
+              const loadedMb = (xhr.loaded / (1024 * 1024)).toFixed(1);
+              const totalMb = (xhr.total / (1024 * 1024)).toFixed(1);
+              window.updateRenderProgress(`DEPLOYING: ${label} [${loadedMb}/${totalMb}MB]`, pct, pct >= 100);
+            }
+          }
+        },
+        (err) => {
+          console.warn(`Could not load ${label} from ${url}:`, err);
+          reject(err);
+        }
+      );
+    });
+  }
+
   async loadCharacter(characterId = 'pilot1') {
     if (this.isLoadingCharacter) return;
     this.isLoadingCharacter = true;

@@ -707,6 +707,35 @@ export class EnvironmentManager {
     this.exteriorAirlockAnchor = new THREE.Vector3(-18.2, 101.8, 250);
   }
 
+  loadModelWithProgress(gltfLoader, url, label, onLoad, onError) {
+    gltfLoader.load(
+      url,
+      (gltf) => {
+        if (typeof window !== 'undefined' && window.updateRenderProgress) {
+          window.updateRenderProgress(`RENDERED: ${label}`, 100, true);
+        }
+        if (onLoad) onLoad(gltf);
+      },
+      (xhr) => {
+        if (typeof window !== 'undefined' && window.updateRenderProgress) {
+          if (xhr.lengthComputable && xhr.total > 0) {
+            const pct = Math.round((xhr.loaded / xhr.total) * 100);
+            const loadedMb = (xhr.loaded / (1024 * 1024)).toFixed(1);
+            const totalMb = (xhr.total / (1024 * 1024)).toFixed(1);
+            window.updateRenderProgress(`STREAMING: ${label} [${loadedMb}/${totalMb}MB]`, pct, pct >= 100);
+          } else if (xhr && xhr.loaded > 0) {
+            const loadedMb = (xhr.loaded / (1024 * 1024)).toFixed(1);
+            window.updateRenderProgress(`STREAMING: ${label} [${loadedMb}MB]`, 65);
+          }
+        }
+      },
+      (err) => {
+        console.warn(`[Environment] Error loading ${label} (${url}):`, err);
+        if (onError) onError(err);
+      }
+    );
+  }
+
   setupInteriorAirlock() {
     const airlockGroup = new THREE.Group();
     airlockGroup.position.set(-18.2, 0.0, 50.0);
@@ -981,7 +1010,7 @@ export class EnvironmentManager {
     // =========================================================================
 
     // 1. Corridor (10.6 MB)
-    gltfLoader.load('/assets/ship_corridor.glb', (gltfCorridor) => {
+    this.loadModelWithProgress(gltfLoader, '/assets/ship_corridor.glb', 'MAIN CORRIDOR', (gltfCorridor) => {
       const corridor = gltfCorridor.scene;
       corridor.position.set(0, -0.31, 0);
       corridor.scale.set(1.0, 1.0, 1.0);
@@ -1003,7 +1032,7 @@ export class EnvironmentManager {
     });
 
     // 2. Grand Sci-Fi Room (1.7 MB - finishes in <300ms!)
-    gltfLoader.load('/assets/ship_interior_room.glb', (gltfRoom) => {
+    this.loadModelWithProgress(gltfLoader, '/assets/ship_interior_room.glb', 'GRAND HALL', (gltfRoom) => {
       const room = gltfRoom.scene;
       room.position.set(0, 4.25, 129.52);
       room.scale.set(1.0, 1.0, 1.0);
@@ -1037,7 +1066,7 @@ export class EnvironmentManager {
     });
 
     // 3. Command Nexus Cockpit (23.8 MB - finishes in ~2s!)
-    gltfLoader.load('/assets/ship_cockpit.glb', (gltfCockpit) => {
+    this.loadModelWithProgress(gltfLoader, '/assets/ship_cockpit.glb', 'COMMAND COCKPIT', (gltfCockpit) => {
       const cockpit = gltfCockpit.scene;
       cockpit.position.set(0, 1.138, -19.256);
       cockpit.rotation.set(0, 0, 0);
@@ -1062,7 +1091,7 @@ export class EnvironmentManager {
     });
 
     // 4. Storage + Cargo Bay Mezzanine (119.7 MB - streams in background)
-    gltfLoader.load('/assets/ship_storage_corridor.glb', (gltfStorage) => {
+    this.loadModelWithProgress(gltfLoader, '/assets/ship_storage_corridor.glb', 'STORAGE DECK', (gltfStorage) => {
       const storageBay = gltfStorage.scene;
       storageBay.position.set(0, 8.35, 68.0);
       storageBay.scale.set(0.26, 0.26, 0.26);
@@ -2100,7 +2129,7 @@ export class EnvironmentManager {
     // 3. Asynchronously load high-detail Starbase model in background without blocking
     const gltfLoader = new GLTFLoader();
     console.log("Streaming Starbase station model in background...");
-    gltfLoader.load('/assets/starbase.glb', (gltf) => {
+    this.loadModelWithProgress(gltfLoader, '/assets/starbase.glb', 'STARBASE STATION', (gltf) => {
       if (gltf && gltf.scene) {
         this.starbaseModel = gltf.scene;
         this.starbaseModel.position.set(0, 0.26, 0);

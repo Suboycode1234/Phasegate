@@ -18,10 +18,6 @@ THREE.DefaultLoadingManager.setURLModifier((url) => {
     const standaloneUrl = window.__GET_ASSET_URL__(url);
     if (standaloneUrl) return standaloneUrl;
   }
-  if (!isLocal && (url.startsWith('/assets/') || url.startsWith('assets/'))) {
-    const cleanPath = url.startsWith('/') ? url : '/' + url;
-    return 'https://media.githubusercontent.com/media/Suboycode1234/Phasegate/main/public' + cleanPath;
-  }
   return url;
 });
 

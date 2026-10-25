@@ -589,18 +589,18 @@ body, html {
    Bottom-Left Rendering & Asset Streaming Progress HUD Indicator
    ========================================================================== */
 .render-loading-indicator {
-  position: absolute;
+  position: fixed;
   left: 24px;
-  bottom: 120px;
-  width: 250px;
-  background: rgba(4, 10, 20, 0.82);
-  border: 1px solid rgba(0, 240, 255, 0.35);
-  border-radius: 6px;
-  padding: 8px 12px;
-  box-shadow: 0 0 16px rgba(0, 240, 255, 0.18), inset 0 0 12px rgba(0, 240, 255, 0.08);
-  backdrop-filter: blur(8px);
-  z-index: 100;
-  transition: opacity 0.5s ease, transform 0.5s ease;
+  bottom: 24px;
+  width: 280px;
+  background: rgba(4, 10, 20, 0.90);
+  border: 1px solid rgba(0, 240, 255, 0.45);
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.25), inset 0 0 14px rgba(0, 240, 255, 0.10);
+  backdrop-filter: blur(12px);
+  z-index: 99999;
+  transition: opacity 0.4s ease, transform 0.4s ease;
   pointer-events: none;
 }
 

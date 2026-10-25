@@ -91,7 +91,7 @@ Choose from three specialized crew roles, each featuring unique abilities and ta
 ### Clone & Install
 ```bash
 # Clone repository
-git clone https://github.com/Suboycode1234/Spacex3D.git
+git clone https://github.com/Suboycode1234/Phasegate.git
 cd Spacex3D
 
 # Install dependencies

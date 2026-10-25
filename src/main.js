@@ -8,12 +8,22 @@ import { EnvironmentManager } from './environment.js';
 import { CombatManager } from './combat.js';
 import { MultiplayerManager } from './multiplayer.js';
 
-// Standalone offline asset redirection: route all asset loads to embedded object URLs
-if (typeof window !== 'undefined' && window.__STANDALONE_BUNDLE__ && window.__GET_ASSET_URL__) {
-  THREE.DefaultLoadingManager.setURLModifier((url) => {
-    return window.__GET_ASSET_URL__(url) || url;
-  });
-}
+// Smart Asset Loader: On cloud deployments (Vercel / Netlify / Web) where Git LFS binary assets
+// are not cloned by the CI runner, route /assets/*.glb directly to GitHub's global media CDN with CORS!
+const isLocal = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.'));
+
+THREE.DefaultLoadingManager.setURLModifier((url) => {
+  if (typeof window !== 'undefined' && window.__STANDALONE_BUNDLE__ && window.__GET_ASSET_URL__) {
+    const standaloneUrl = window.__GET_ASSET_URL__(url);
+    if (standaloneUrl) return standaloneUrl;
+  }
+  if (!isLocal && (url.startsWith('/assets/') || url.startsWith('assets/'))) {
+    const cleanPath = url.startsWith('/') ? url : '/' + url;
+    return 'https://media.githubusercontent.com/media/Suboycode1234/Phasegate/main/public' + cleanPath;
+  }
+  return url;
+});
 
 class GameApp {
   constructor() {
@@ -33,6 +43,12 @@ class GameApp {
     this.renderer.toneMappingExposure = 1.25;
     this.renderer.shadowMap.enabled = false; // Disable heavy multi-light shadow maps for smooth 60 FPS
     this.container.appendChild(this.renderer.domElement);
+
+    // Global Radiant Illumination (guarantees crystal-clear lighting across all rooms & modes!)
+    const globalHemi = new THREE.HemisphereLight(0xe0f2fe, 0x1e293b, 3.2);
+    this.scene.add(globalHemi);
+    const globalAmb = new THREE.AmbientLight(0xffffff, 2.8);
+    this.scene.add(globalAmb);
 
     // Clock
     this.clock = new THREE.Clock();

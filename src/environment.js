@@ -353,6 +353,7 @@ export class EnvironmentManager {
     this.armoryPedestals = [];
     this.armoryMixers = [];
 
+    this.setupInteriorLighting(); // Synchronously illuminate all rooms on frame 1!
     this.initSpace();
     this.initStarbase();
     this.initInterior();
@@ -1434,10 +1435,10 @@ export class EnvironmentManager {
     this.interiorLightingGroup.clear();
 
     // High-Vibrancy Ambient and Hemisphere fill for crystal clear room illumination
-    const hemi = new THREE.HemisphereLight(0xe0f2fe, 0x1e293b, 4.5);
+    const hemi = new THREE.HemisphereLight(0xe0f2fe, 0x1e293b, 5.5);
     this.interiorLightingGroup.add(hemi);
 
-    const amb = new THREE.AmbientLight(0xffffff, 3.8);
+    const amb = new THREE.AmbientLight(0xffffff, 4.5);
     this.interiorLightingGroup.add(amb);
 
     // 1. Cockpit Bridge Illumination (Z = -26 to -16, Y = 0 to 2.5)

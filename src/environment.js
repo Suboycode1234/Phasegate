@@ -2181,7 +2181,7 @@ export class EnvironmentManager {
     if (this.mode === 'starbase') {
       if (this.starbaseGroup.visible !== true) this.starbaseGroup.visible = true;
       if (this.interiorGroup.visible !== false) this.interiorGroup.visible = false;
-      if (this.spaceGroup.visible !== false) this.spaceGroup.visible = false;
+      if (this.spaceGroup.visible !== true) this.spaceGroup.visible = true;
       this.zoneCockpit.visible = false;
       this.zoneCorridor.visible = false;
       this.zoneGrandHall.visible = false;
@@ -2273,7 +2273,7 @@ export class EnvironmentManager {
     if (mode === 'starbase') {
       this.starbaseGroup.visible = true;
       this.interiorGroup.visible = false;
-      this.spaceGroup.visible = false;
+      this.spaceGroup.visible = true;
     } else if (mode === 'interior') {
       this.starbaseGroup.visible = false;
       this.interiorGroup.visible = true;

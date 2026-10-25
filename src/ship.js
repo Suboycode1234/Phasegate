@@ -182,7 +182,7 @@ export class ShipController {
       
       // Imposing 105m Capital Starship Scale (matching 120m interior corridor & grand hall)
       this.model.scale.set(8.5, 8.5, 8.5);
-      this.model.rotation.y = Math.PI; // Face forward along -Z
+      this.model.rotation.y = 0; // Face forward along -Z
 
       const hullTexture = createStarshipHullTexture(false);
       this.model.traverse((child) => {

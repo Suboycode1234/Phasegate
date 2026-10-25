@@ -156,10 +156,10 @@ class GameApp {
     }
 
     // Initial positioning & mode setup (Game begins inside starship main corridor)
-    this.mode = 'interior';
-    this.player.position.set(0, 0.20, 0);
+    this.mode = 'starbase';
+    this.player.position.set(0, 0.30, 0);
     this.ship.shipGroup.visible = false;
-    this.environment.setMode('interior');
+    this.environment.setMode('starbase');
 
     this.setupInteractions();
     this.setupUI();

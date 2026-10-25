@@ -1,3 +1,17 @@
+
+function reportStreaming(label, xhr) {
+  if (typeof window !== 'undefined' && window.updateRenderProgress) {
+    if (xhr && xhr.lengthComputable && xhr.total > 0) {
+      const pct = Math.round((xhr.loaded / xhr.total) * 100);
+      const loadedMb = (xhr.loaded / (1024 * 1024)).toFixed(1);
+      const totalMb = (xhr.total / (1024 * 1024)).toFixed(1);
+      window.updateRenderProgress(`STREAMING: ${label} [${loadedMb}/${totalMb}MB]`, pct, pct >= 100);
+    } else if (xhr && xhr.loaded > 0) {
+      const loadedMb = (xhr.loaded / (1024 * 1024)).toFixed(1);
+      window.updateRenderProgress(`STREAMING: ${label} [${loadedMb}MB]`, 65);
+    }
+  }
+}
 // Space and Interior Environment Loader & Dynamic Scene Elements
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';

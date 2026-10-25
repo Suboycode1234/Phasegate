@@ -27,6 +27,7 @@ THREE.DefaultLoadingManager.setURLModifier((url) => {
 
 // Bottom-Left Rendering & Asset Streaming Progress Controller
 let renderLoadingTimer = null;
+if (typeof window !== 'undefined') window.updateRenderProgress = updateRenderProgress;
 export function updateRenderProgress(label, percent, isComplete = false) {
   if (typeof document === 'undefined') return;
   const container = document.getElementById('render-loading-indicator');
@@ -863,11 +864,12 @@ class GameApp {
         this.dom.btnToggleMode.classList.remove('flight-mode');
       }
 
+      const distToAirlock = Math.round(this.player.position.distanceTo(this.player.tetherAnchor));
+      this.dom.interactPrompt.classList.add('visible');
       if (this.player.nearExteriorAirlock) {
-        this.dom.interactPrompt.classList.add('visible');
-        this.dom.promptText.innerText = 'CYCLE AIRLOCK & RE-ENTER STARSHIP';
+        this.dom.promptText.innerText = 'CYCLE AIRLOCK & RE-ENTER STARSHIP [E]';
       } else {
-        this.dom.interactPrompt.classList.remove('visible');
+        this.dom.promptText.innerText = `🛸 FRIENDLY MOTHERSHIP AIRLOCK: ${distToAirlock}m | [HOLD F] TO REEL WINCH`;
       }
 
       const bootsStatus = this.player.isTethered ? 'MAG-BOOTS [LOCKED]' : 'JETPACK [6DOF RCS]';

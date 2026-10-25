@@ -7,7 +7,7 @@ export function createStarshipHullTexture(isHostile = false) {
   const ctx = canvas.getContext('2d');
 
   // Base armored plating background
-  ctx.fillStyle = isHostile ? '#160b0e' : '#0c131d';
+  ctx.fillStyle = isHostile ? '#160b0e' : '#06080c';
   ctx.fillRect(0, 0, 1024, 1024);
 
   // Plating tiles and panel seams
@@ -192,11 +192,11 @@ export class ShipController {
           // Apply rich textured PBR sci-fi armor plating
           child.material = new THREE.MeshStandardMaterial({
             map: hullTexture,
-            color: 0xd0e8ff,
-            metalness: 0.85,
-            roughness: 0.32,
-            emissive: 0x002233,
-            emissiveIntensity: 0.8
+            color: 0x08090c, // Tactical Stealth Onyx Black Armor Plating
+            metalness: 0.92,
+            roughness: 0.22,
+            emissive: 0x001422,
+            emissiveIntensity: 0.5
           });
         }
       });
@@ -228,6 +228,16 @@ export class ShipController {
 
       airlockPortGroup.add(hatchRing, hatchDoor, beaconLight, beaconMesh);
       this.model.add(airlockPortGroup);
+
+      // High-Visibility Pulsing Navigation Beacon on Dorsal Fin
+      const finStrobe = new THREE.PointLight(0x00f0ff, 6.5, 80);
+      finStrobe.position.set(0, 9.5, 2.0);
+      const finBeaconMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.35, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0x00f0ff })
+      );
+      finBeaconMesh.position.set(0, 9.5, 2.0);
+      this.model.add(finStrobe, finBeaconMesh);
       this.airlockWorldPos = new THREE.Vector3(-14.0, 103.5, 255.0);
 
       this.shipGroup.add(this.model);

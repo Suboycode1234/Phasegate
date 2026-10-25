@@ -602,48 +602,64 @@ export class CombatManager {
       }
     }
 
-    // 5. Update Enemy AI Drones
+    // 5. Update Enemy Warships: INDEPENDENT 3D PATROL SWEEPS & TACTICAL STRAFING
+    // Enemy warships NEVER chase or fly towards the player!
+    // They fly their own independent 3D orbital trajectories through the stars, firing lasers as they fly past!
     const targetCombatPos = (isFlightMode && playerShip)
       ? playerShip.shipGroup.position
       : ((playerAstronaut && playerAstronaut.isSpacewalk) ? playerAstronaut.position : null);
 
-    if (!targetCombatPos) return;
-
     this.enemies.forEach((enemy) => {
       if (!enemy.alive) return;
 
-      const toTarget = targetCombatPos.clone().sub(enemy.mesh.position);
-      const distToTarget = toTarget.length();
+      // Independent 3D orbital trajectory through asteroid belts & cosmic arena
+      enemy.orbitAngle += enemy.orbitSpeed * delta;
+      enemy.altitudePhase += delta * 0.65;
 
-      if (distToTarget < 200) {
-        // Combat state: Face target & pursue
-        enemy.mesh.lookAt(targetCombatPos);
+      const targetX = Math.cos(enemy.orbitAngle) * enemy.orbitRadius;
+      const targetZ = Math.sin(enemy.orbitAngle) * enemy.orbitRadius + 120.0;
+      const targetY = enemy.altitudeOffset + Math.sin(enemy.altitudePhase) * 35.0;
 
-        const moveDir = toTarget.clone().normalize();
-        if (distToTarget > 40) {
-          enemy.mesh.position.addScaledVector(moveDir, enemy.speed * delta);
+      const nextWaypoint = new THREE.Vector3(targetX, targetY, targetZ);
+      
+      // Orient ship forward into independent flight direction (never faces backwards)
+      enemy.mesh.lookAt(nextWaypoint);
+      const flightDir = nextWaypoint.clone().sub(enemy.mesh.position).normalize();
+      enemy.mesh.position.addScaledVector(flightDir, enemy.speed * delta);
+
+      // Independent laser firing at player or starship while flying along independent vector
+      if (targetCombatPos) {
+        const toTarget = targetCombatPos.clone().sub(enemy.mesh.position);
+        const distToTarget = toTarget.length();
+
+        // If player approaches within 40m, execute evasive banking repel so they never collide
+        if (distToTarget < 40) {
+          const repelDir = enemy.mesh.position.clone().sub(targetCombatPos).normalize();
+          enemy.mesh.position.addScaledVector(repelDir, 18.0 * delta);
         }
 
-        // Fire at player
-        enemy.fireTimer -= delta;
-        if (enemy.fireTimer <= 0) {
-          enemy.fireTimer = 2.2 + Math.random() * 1.5;
-          sounds.playLaser(false);
+        if (distToTarget < 340) {
+          enemy.fireTimer -= delta;
+          if (enemy.fireTimer <= 0) {
+            enemy.fireTimer = 1.4 + Math.random() * 1.6;
+            sounds.playLaser(false);
 
-          this.addLaser({
-            position: enemy.mesh.position.clone(),
-            direction: moveDir,
-            speed: 130.0,
-            damage: 15,
-            isPlayer: false
-          });
+            // Aim forward laser batteries towards player while the ship continues its independent flight
+            const aimDir = toTarget.clone().normalize();
+            const wingSide = (Math.random() > 0.5) ? -5.5 : 5.5;
+            const laserOrigin = enemy.mesh.position.clone().add(
+              new THREE.Vector3(wingSide, 0.4, 0).applyQuaternion(enemy.mesh.quaternion)
+            );
+
+            this.addLaser({
+              position: laserOrigin,
+              direction: aimDir,
+              speed: 160.0,
+              damage: 16,
+              isPlayer: false
+            });
+          }
         }
-      } else {
-        // Orbit patrol state
-        enemy.orbitAngle += enemy.orbitSpeed * delta;
-        enemy.mesh.position.x = Math.cos(enemy.orbitAngle) * enemy.orbitRadius;
-        enemy.mesh.position.z = Math.sin(enemy.orbitAngle) * enemy.orbitRadius + 120;
-        enemy.mesh.rotation.y += delta * 0.8;
       }
     });
   }

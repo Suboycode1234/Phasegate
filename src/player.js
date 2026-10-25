@@ -2418,6 +2418,11 @@ export class PlayerController {
     }
   }
 
+  launchTetherToAirlock() {
+    this.isTetherPulling = true;
+    try { sounds.playJetpack(true); } catch(e) {}
+  }
+
   teleport(pos) {
     this.position.copy(pos);
     this.velocity.set(0, 0, 0);

@@ -707,8 +707,11 @@ export class EnvironmentManager {
     this.exteriorAirlockAnchor = new THREE.Vector3(-18.2, 101.8, 250);
   }
 
-  loadModelWithProgress(gltfLoader, url, label, onLoad, onError) {
-    gltfLoader.load(
+  loadModelWithProgress(url, label, onLoad, onError) {
+    if (!this.gltfLoader) {
+      this.gltfLoader = new GLTFLoader();
+    }
+    this.gltfLoader.load(
       url,
       (gltf) => {
         if (typeof window !== 'undefined' && window.updateRenderProgress) {
@@ -1010,7 +1013,7 @@ export class EnvironmentManager {
     // =========================================================================
 
     // 1. Corridor (10.6 MB)
-    this.loadModelWithProgress(gltfLoader, '/assets/ship_corridor.glb', 'MAIN CORRIDOR', (gltfCorridor) => {
+    this.loadModelWithProgress('/assets/ship_corridor.glb', 'MAIN CORRIDOR', (gltfCorridor) => {
       const corridor = gltfCorridor.scene;
       corridor.position.set(0, -0.31, 0);
       corridor.scale.set(1.0, 1.0, 1.0);
@@ -1032,7 +1035,7 @@ export class EnvironmentManager {
     });
 
     // 2. Grand Sci-Fi Room (1.7 MB - finishes in <300ms!)
-    this.loadModelWithProgress(gltfLoader, '/assets/ship_interior_room.glb', 'GRAND HALL', (gltfRoom) => {
+    this.loadModelWithProgress('/assets/ship_interior_room.glb', 'GRAND HALL', (gltfRoom) => {
       const room = gltfRoom.scene;
       room.position.set(0, 4.25, 129.52);
       room.scale.set(1.0, 1.0, 1.0);
@@ -1066,7 +1069,7 @@ export class EnvironmentManager {
     });
 
     // 3. Command Nexus Cockpit (23.8 MB - finishes in ~2s!)
-    this.loadModelWithProgress(gltfLoader, '/assets/ship_cockpit.glb', 'COMMAND COCKPIT', (gltfCockpit) => {
+    this.loadModelWithProgress('/assets/ship_cockpit.glb', 'COMMAND COCKPIT', (gltfCockpit) => {
       const cockpit = gltfCockpit.scene;
       cockpit.position.set(0, 1.138, -19.256);
       cockpit.rotation.set(0, 0, 0);
@@ -1091,7 +1094,7 @@ export class EnvironmentManager {
     });
 
     // 4. Storage + Cargo Bay Mezzanine (119.7 MB - streams in background)
-    this.loadModelWithProgress(gltfLoader, '/assets/ship_storage_corridor.glb', 'STORAGE DECK', (gltfStorage) => {
+    this.loadModelWithProgress('/assets/ship_storage_corridor.glb', 'STORAGE DECK', (gltfStorage) => {
       const storageBay = gltfStorage.scene;
       storageBay.position.set(0, 8.35, 68.0);
       storageBay.scale.set(0.26, 0.26, 0.26);
@@ -1131,7 +1134,7 @@ export class EnvironmentManager {
     });
 
     // 5. Lower Deck Cryo & Engineering Bay (99.4 MB - streams in background)
-    gltfLoader.load('/assets/ship_lower_deck.glb', (gltfLower) => {
+    this.loadModelWithProgress('/assets/ship_lower_deck.glb', 'ENGINEERING DECK', (gltfLower) => {
       const lowerDeck = gltfLower.scene;
       lowerDeck.position.set(6.0, -6.35, 49.0);
       lowerDeck.scale.set(1.0, 1.05, 1.0);
@@ -2129,7 +2132,7 @@ export class EnvironmentManager {
     // 3. Asynchronously load high-detail Starbase model in background without blocking
     const gltfLoader = new GLTFLoader();
     console.log("Streaming Starbase station model in background...");
-    this.loadModelWithProgress(gltfLoader, '/assets/starbase.glb', 'STARBASE STATION', (gltf) => {
+    this.loadModelWithProgress('/assets/starbase.glb', 'STARBASE STATION', (gltf) => {
       if (gltf && gltf.scene) {
         this.starbaseModel = gltf.scene;
         this.starbaseModel.position.set(0, 0.26, 0);

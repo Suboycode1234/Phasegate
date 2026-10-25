@@ -241,9 +241,14 @@ export class MultiplayerManager {
         this.joinAsClient(cleanRoom, hostId, iceConfig);
       } else if (err.type === 'peer-unavailable') {
         console.log(`[NetLift] Peer unavailable. Waiting for squad link retry...`);
+        this.setStatus(`STANDBY // SOLO FLIGHT ACTIVE [ROOM: ${this.roomId}]`);
       } else {
         console.warn('[NetLift] PeerJS broker notice:', err.type, err.message);
-        this.handleBrokerDisconnect();
+        if (this.reconnectAttempts < 3) {
+          this.handleBrokerDisconnect();
+        } else {
+          this.setStatus(`STANDBY // SOLO FLIGHT ACTIVE [ROOM: ${this.roomId}]`);
+        }
       }
     });
 
@@ -284,8 +289,21 @@ export class MultiplayerManager {
     });
 
     this.peer.on('error', (err) => {
+      if (err.type === 'peer-unavailable') {
+        // Squad host is not online yet; this is normal in solo play or waiting for a squad
+        console.log(`[NetLift] Squad Commander not currently online. Ready as solo pilot in room ${this.roomId}.`);
+        this.setStatus(`STANDBY // SOLO FLIGHT ACTIVE [ROOM: ${this.roomId}]`);
+        return;
+      }
+      if (err.type === 'unavailable-id') {
+        return;
+      }
       console.warn('[NetLift] Member connection notice:', err.type, err.message);
-      this.handleBrokerDisconnect();
+      if (this.reconnectAttempts < 3) {
+        this.handleBrokerDisconnect();
+      } else {
+        this.setStatus(`STANDBY // SOLO FLIGHT ACTIVE [ROOM: ${this.roomId}]`);
+      }
     });
 
     this.peer.on('disconnected', () => {
@@ -295,9 +313,15 @@ export class MultiplayerManager {
 
   handleBrokerDisconnect() {
     if (this.reconnectTimer) return;
+    if (this.reconnectAttempts >= 3) {
+      console.log(`[NetLift] Max broker link retries reached (3/3). Entering Standby Solo Mode.`);
+      this.setStatus(`STANDBY // SOLO FLIGHT ACTIVE [ROOM: ${this.roomId}]`);
+      return;
+    }
     this.reconnectAttempts++;
-    const delay = Math.min(10000, 1500 * this.reconnectAttempts);
-    console.log(`[NetLift] PeerJS broker disconnected. Reconnecting in ${delay}ms...`);
+    const delay = Math.min(8000, 2000 * this.reconnectAttempts);
+    console.log(`[NetLift] PeerJS broker disconnected. Reconnecting attempt ${this.reconnectAttempts}/3 in ${delay}ms...`);
+    this.setStatus(`RECONNECTING SQUAD (${this.reconnectAttempts}/3)... [ROOM: ${this.roomId}]`);
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;

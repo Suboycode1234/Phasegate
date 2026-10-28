@@ -1,3 +1,21 @@
+const KNOWN_ASSET_SIZES = {
+  'ship_exterior.glb': 1.72 * 1024 * 1024,
+  'ship_corridor.glb': 10.68 * 1024 * 1024,
+  'ship_interior_room.glb': 1.69 * 1024 * 1024,
+  'ship_cockpit.glb': 23.79 * 1024 * 1024,
+  'ship_storage_corridor.glb': 119.69 * 1024 * 1024,
+  'ship_lower_deck.glb': 99.42 * 1024 * 1024,
+  'starbase.glb': 82.96 * 1024 * 1024,
+  'player2.glb': 11.35 * 1024 * 1024,
+  'player3.glb': 11.60 * 1024 * 1024,
+  'anim_idle.glb': 14.26 * 1024 * 1024,
+  'plasma_rifle.glb': 78.11 * 1024 * 1024,
+  'railgun.glb': 4.93 * 1024 * 1024,
+  'assault_rifle.glb': 1.44 * 1024 * 1024,
+  'combat_knife.glb': 0.92 * 1024 * 1024,
+  'energy_pistol.glb': 0.34 * 1024 * 1024
+};
+
 
 function reportStreaming(label, xhr) {
   if (typeof window !== 'undefined' && window.updateRenderProgress) {
@@ -707,10 +725,17 @@ export class EnvironmentManager {
     this.exteriorAirlockAnchor = new THREE.Vector3(-18.2, 101.8, 250);
   }
 
-  loadModelWithProgress(url, label, onLoad, onError) {
+    loadModelWithProgress(url, label, onLoad, onError) {
     if (!this.gltfLoader) {
       this.gltfLoader = new GLTFLoader();
     }
+    const filename = (url.split('/').pop().split('?')[0] || '').toLowerCase();
+    const estimatedTotal = KNOWN_ASSET_SIZES[filename] || 12 * 1024 * 1024;
+
+    if (typeof window !== 'undefined' && window.updateRenderProgress) {
+      window.updateRenderProgress(`STREAMING: ${label}`, 10, false);
+    }
+
     this.gltfLoader.load(
       url,
       (gltf) => {
@@ -721,19 +746,19 @@ export class EnvironmentManager {
       },
       (xhr) => {
         if (typeof window !== 'undefined' && window.updateRenderProgress) {
-          if (xhr.lengthComputable && xhr.total > 0) {
-            const pct = Math.round((xhr.loaded / xhr.total) * 100);
-            const loadedMb = (xhr.loaded / (1024 * 1024)).toFixed(1);
-            const totalMb = (xhr.total / (1024 * 1024)).toFixed(1);
-            window.updateRenderProgress(`STREAMING: ${label} [${loadedMb}/${totalMb}MB]`, pct, pct >= 100);
-          } else if (xhr && xhr.loaded > 0) {
-            const loadedMb = (xhr.loaded / (1024 * 1024)).toFixed(1);
-            window.updateRenderProgress(`STREAMING: ${label} [${loadedMb}MB]`, 65);
-          }
+          const total = (xhr.lengthComputable && xhr.total > 0) ? xhr.total : estimatedTotal;
+          const loaded = xhr.loaded || 0;
+          const pct = Math.min(99, Math.max(10, Math.round((loaded / total) * 100)));
+          const loadedMb = (loaded / (1024 * 1024)).toFixed(1);
+          const totalMb = (total / (1024 * 1024)).toFixed(1);
+          window.updateRenderProgress(`STREAMING: ${label} [${loadedMb}/${totalMb}MB]`, pct, false);
         }
       },
       (err) => {
         console.warn(`[Environment] Error loading ${label} (${url}):`, err);
+        if (typeof window !== 'undefined' && window.updateRenderProgress) {
+          window.updateRenderProgress(`FALLBACK ACTIVE: ${label}`, 100, true);
+        }
         if (onError) onError(err);
       }
     );
@@ -1971,7 +1996,7 @@ export class EnvironmentManager {
         floatGroup: floatGroup,
         baseY: 1.25,
         pulseRing: floorRing,
-        spotLight: spot,
+        spotLight: pedestalLight,
         holoPlaque: holoPlaque,
         config: w
       };
@@ -2324,6 +2349,9 @@ export class EnvironmentManager {
       this.starbaseGroup.visible = false;
       this.interiorGroup.visible = true;
       this.spaceGroup.visible = false;
+      this.zoneCorridor.visible = true;
+      this.zoneGrandHall.visible = true;
+      this.zoneCockpit.visible = true;
     } else {
       this.starbaseGroup.visible = false;
       this.interiorGroup.visible = false;

@@ -177,6 +177,9 @@ export class ShipController {
     const gltfLoader = new GLTFLoader();
     try {
       console.log("Loading StarShip capital exterior...");
+      if (typeof window !== 'undefined' && window.updateRenderProgress) {
+        window.updateRenderProgress('STREAMING: CAPITAL STARSHIP HULL [1.7MB]', 35);
+      }
       const gltf = await gltfLoader.loadAsync('/assets/ship_exterior.glb');
       this.model = gltf.scene;
       
@@ -192,7 +195,7 @@ export class ShipController {
           // Apply rich textured PBR sci-fi armor plating
           child.material = new THREE.MeshStandardMaterial({
             map: hullTexture,
-            color: 0x08090c, // Tactical Stealth Onyx Black Armor Plating
+            color: 0xffffff, // Full fidelity stealth onyx plating with cyan circuits
             metalness: 0.92,
             roughness: 0.22,
             emissive: 0x001422,
@@ -242,6 +245,9 @@ export class ShipController {
 
       this.shipGroup.add(this.model);
       console.log("✔ Capital Starship exterior (105m) loaded with high-tech armor & EVA airlock port!");
+      if (typeof window !== 'undefined' && window.updateRenderProgress) {
+        window.updateRenderProgress('RENDERED: CAPITAL STARSHIP HULL', 100, true);
+      }
     } catch (e) {
       console.warn("Could not load ship_exterior.glb, falling back to procedural heavy battlecruiser:", e);
       this.createProceduralFighter();

@@ -1677,9 +1677,13 @@ export class PlayerController {
     }
   }
 
-  updateCamera(delta) {
+    updateCamera(delta) {
     if (this.isSeatedInCockpit) {
-      // Sitting in the pilot seat looking out at the panoramic screens and flight controls
+      if (this.flightViewMode === 'exterior') {
+        // In 3rd person flight, let ShipController.updateCamera() trail behind ship
+        return;
+      }
+      // Seated inside Cockpit Bridge looking out at panoramic screens and flight controls
       const eyePos = new THREE.Vector3(0, 1.28, -19.50);
 
       const lookDir = new THREE.Vector3(0, 0, -1);
@@ -2234,7 +2238,11 @@ export class PlayerController {
     }
 
     if (this.mixer) {
-      this.mixer.update(delta);
+      try {
+        this.mixer.update(delta);
+      } catch (err) {
+        // Safe catch prevents bone retargeting error during avatar transition from halting game loop
+      }
     }
     if (this.mesh) {
       const headBone = this.mesh.getObjectByName('CC_Base_Head');
